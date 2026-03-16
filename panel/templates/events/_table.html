@@ -1,0 +1,113 @@
+{% if events %}
+<input type="hidden" name="page" value="{{ page }}">
+<div class="ds-card overflow-hidden">
+    <table class="ds-table">
+        <thead>
+            <tr>
+                <th class="w-12">#</th>
+                <th class="w-28">Type</th>
+                <th class="w-40">Timestamp</th>
+                <th class="w-36">User</th>
+                <th>Message</th>
+                <th class="w-20">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for event in events %}
+            <tr class="align-top">
+                <td class="text-xs ds-text-muted font-mono">{{ event.id }}</td>
+                <td>
+                    {% if event.event_type == 'flag_leak_blocked' %}
+                    <span class="ds-badge ds-badge-danger">Flag Leak</span>
+                    {% elif event.event_type == 'error' %}
+                    <span class="ds-badge ds-badge-warning">Error</span>
+                    {% elif event.event_type == 'user_report' %}
+                    <span class="ds-badge ds-badge-info">Report</span>
+                    {% else %}
+                    <span class="ds-badge ds-badge-neutral">{{ event.event_type }}</span>
+                    {% endif %}
+                </td>
+                <td class="text-xs ds-text-muted font-mono whitespace-nowrap">
+                    {{ event.created_at[:19] if event.created_at else '' }}
+                </td>
+                <td>
+                    {% if event.user_id %}
+                    <a href="/panel/users/{{ event.user_id }}"
+                       class="text-sm ds-link font-medium">
+                        {{ event.first_name or event.user_id }}
+                    </a>
+                    {% if event.username %}
+                    <p class="text-xs ds-text-muted">@{{ event.username }}</p>
+                    {% endif %}
+                    {% else %}
+                    <span class="text-xs ds-text-muted">-</span>
+                    {% endif %}
+                </td>
+                <td class="text-sm max-w-md">
+                    <details class="report-log-item">
+                        <summary class="report-log-summary list-none cursor-pointer">
+                            <p class="report-log-message">{{ event.message }}</p>
+                            <span class="report-log-toggle">Expand</span>
+                        </summary>
+                    </details>
+                </td>
+                <td>
+                    <button hx-post="/panel/events/{{ event.id }}/delete"
+                            hx-target="#events-content"
+                            hx-swap="innerHTML"
+                            hx-include="[name='search'], [name='event_type'], [name='page']"
+                            hx-confirm="Delete this event?"
+                            class="text-xs font-medium transition-colors" style="color: var(--ds-danger);">
+                        Delete
+                    </button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Pagination -->
+{% if total_pages > 1 %}
+<div class="flex items-center justify-between mt-4">
+    <p class="text-sm ds-text-secondary">
+        Showing {{ ((page - 1) * per_page) + 1 }}&ndash;{{ [page * per_page, total] | min }} of {{ total }}
+    </p>
+    <div class="flex items-center gap-2">
+        {% if page > 1 %}
+        <a href="/panel/events?search={{ search }}&event_type={{ type_filter }}&page={{ page - 1 }}"
+           hx-get="/panel/events?search={{ search }}&event_type={{ type_filter }}&page={{ page - 1 }}"
+           hx-target="#events-content"
+           hx-push-url="true"
+           class="ds-btn-secondary ds-btn-sm">
+            Previous
+        </a>
+        {% endif %}
+        <span class="text-sm ds-text-secondary">Page {{ page }} / {{ total_pages }}</span>
+        {% if page < total_pages %}
+        <a href="/panel/events?search={{ search }}&event_type={{ type_filter }}&page={{ page + 1 }}"
+           hx-get="/panel/events?search={{ search }}&event_type={{ type_filter }}&page={{ page + 1 }}"
+           hx-target="#events-content"
+           hx-push-url="true"
+           class="ds-btn-secondary ds-btn-sm">
+            Next
+        </a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+{% else %}
+<div class="ds-card p-12 text-center">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+         stroke-width="1" stroke="currentColor" class="w-12 h-12 mx-auto ds-text-muted mb-3">
+        <path stroke-linecap="round" stroke-linejoin="round"
+              d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0"/>
+    </svg>
+    <p class="ds-text-secondary text-sm">
+        {% if search %}No events matching "{{ search }}"
+        {% elif type_filter %}No {{ type_filter | replace('_', ' ') }} events
+        {% else %}No events recorded yet{% endif %}
+    </p>
+</div>
+{% endif %}

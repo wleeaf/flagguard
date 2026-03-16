@@ -1,0 +1,53 @@
+groups:
+- name: aishield.rules
+  interval: 30s
+  rules:
+  - alert: AIShieldAICircuitOpen
+    expr: ai_circuit_open > 0
+    for: 2m
+    labels:
+      severity: critical
+    annotations:
+      summary: "AI circuit breaker is open"
+      description: "Gemini traffic is being rejected due to consecutive failures."
+
+  - alert: AIShieldAIFailureRateHigh
+    expr: |
+      (
+        sum(rate(ai_requests_failed_total[5m]))
+        /
+        clamp_min(sum(rate(ai_requests_total[5m])), 1)
+      ) > 0.1
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "AI failure rate exceeded 10%"
+      description: "AI request failures are sustained above normal."
+
+  - alert: AIShieldDBLockRetriesHigh
+    expr: sum(increase(db_locked_commit_retries_total[5m])) > 100
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "DB lock retries are elevated"
+      description: "Database contention is increasing; inspect write hotspots and pool sizing."
+
+  - alert: AIShieldDBLatencyHigh
+    expr: db_transaction_seconds_avg > 0.25
+    for: 10m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Average DB transaction latency is high"
+      description: "Average DB transaction latency exceeded 250ms for 10 minutes."
+
+  - alert: AIShieldBroadcastJobFailures
+    expr: sum(increase(broadcast_jobs_failed_total[10m])) > 0
+    for: 1m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Broadcast jobs are failing"
+      description: "At least one broadcast job failed in the last 10 minutes."

@@ -1,0 +1,7 @@
+venv/
+agent-reviews/
+__pycache__/
+backups/
+*.log
+.env
+api.json

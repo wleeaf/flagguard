@@ -1,0 +1,86 @@
+{#- Reusable Jinja2 macros for the admin panel. -#}
+
+{#- Flash message with icon, close button, and optional auto-dismiss. -#}
+{% macro flash_message(msg, msg_type, auto_dismiss=true) %}
+{% if msg %}
+<div class="flash-message mb-6 p-3 rounded-lg text-sm flex items-center gap-2
+            {% if msg_type == 'error' %}ds-badge-danger
+            {% else %}ds-badge-success{% endif %}"
+     style="{% if msg_type == 'error' %}background: var(--ds-danger-soft); border: 1px solid var(--ds-danger); color: var(--ds-danger-text);
+            {% else %}background: var(--ds-success-soft); border: 1px solid var(--ds-success); color: var(--ds-success-text);{% endif %}"
+     {% if auto_dismiss and msg_type != 'error' %}data-auto-dismiss="5000"{% endif %}>
+    {% if msg_type == 'error' %}
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 shrink-0">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"/>
+    </svg>
+    {% else %}
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 shrink-0">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
+    </svg>
+    {% endif %}
+    <span class="flex-1">{{ msg }}</span>
+    <button type="button" class="flash-dismiss ml-auto p-0.5 rounded hover:bg-black/10 transition-colors shrink-0" aria-label="Dismiss">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
+        </svg>
+    </button>
+</div>
+{% endif %}
+{% endmacro %}
+
+{#- Simple flash without icons (for controls page inline messages). -#}
+{% macro flash_simple(msg, msg_type) %}
+{% if msg %}
+<div class="flash-message mb-3 p-2.5 rounded-lg text-sm flex items-center gap-2"
+     style="{% if msg_type == 'error' %}background: var(--ds-danger-soft); border: 1px solid var(--ds-danger); color: var(--ds-danger-text);
+            {% else %}background: var(--ds-success-soft); border: 1px solid var(--ds-success); color: var(--ds-success-text);{% endif %}"
+     {% if msg_type != 'error' %}data-auto-dismiss="5000"{% endif %}>
+    <span class="flex-1">{{ msg }}</span>
+    <button type="button" class="flash-dismiss ml-auto p-0.5 rounded hover:bg-black/10 transition-colors shrink-0" aria-label="Dismiss">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
+        </svg>
+    </button>
+</div>
+{% endif %}
+{% endmacro %}
+
+{#- Confirmation modal (shared by controls + prompts pages). -#}
+{% macro confirm_modal() %}
+<div id="confirm-modal" class="fixed inset-0 z-[100] hidden" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+    <div id="confirm-backdrop" class="fixed inset-0 ds-modal-backdrop"></div>
+    <div class="fixed inset-0 flex items-center justify-center p-4 pointer-events-none">
+        <div class="ds-modal-box w-full max-w-sm pointer-events-auto
+                    transform transition-all duration-200 scale-95 opacity-0"
+             id="confirm-modal-box">
+            <div class="p-6">
+                <div id="confirm-icon-warning" class="mx-auto mb-4 w-12 h-12 rounded-full items-center justify-center" style="display:none; background: var(--ds-warning-soft);">
+                    <svg class="w-6 h-6" style="color: var(--ds-warning);" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
+                    </svg>
+                </div>
+                <div id="confirm-icon-danger" class="mx-auto mb-4 w-12 h-12 rounded-full items-center justify-center" style="display:none; background: var(--ds-danger-soft);">
+                    <svg class="w-6 h-6" style="color: var(--ds-danger);" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0 3.75h.008M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                </div>
+                <h3 id="confirm-title" class="text-lg font-semibold text-center mb-2" style="color: var(--ds-text);"></h3>
+                <p id="confirm-message" class="text-sm text-center leading-relaxed" style="color: var(--ds-text-secondary);"></p>
+            </div>
+            <div class="flex ds-divider" style="border-top: 1px solid var(--ds-border);">
+                <button id="confirm-cancel-btn"
+                        class="flex-1 px-4 py-3 text-sm font-medium rounded-bl-2xl transition-colors"
+                        style="color: var(--ds-text-secondary);"
+                        onmouseover="this.style.background='var(--ds-surface-hover)'"
+                        onmouseout="this.style.background='transparent'">
+                    Cancel
+                </button>
+                <button id="confirm-action-btn"
+                        class="flex-1 px-4 py-3 text-sm font-semibold rounded-br-2xl transition-colors">
+                    Confirm
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endmacro %}

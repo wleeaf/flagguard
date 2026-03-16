@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+{% block title %}Leaderboard{% endblock %}
+{% block page_title %}Leaderboard{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+    <div class="ds-stat-card p-5" style="border-color: rgba(217, 119, 6, 0.3);">
+        <p class="ds-section-title" style="color: var(--ds-warning-text);">Flag Progress</p>
+        <p class="text-2xl font-bold mt-1">{{ progress_board | length }}</p>
+        <p class="text-[11px] mt-1 ds-text-muted">{{ total_flags }} flag{{ 's' if total_flags != 1 else '' }} defined</p>
+    </div>
+    <div class="ds-stat-card p-5">
+        <p class="ds-section-title">Current Competition Winners</p>
+        <p class="text-2xl font-bold mt-1">{{ competition_board | length }}</p>
+        <p class="text-[11px] mt-1 {% if competition_active %}text-green-600{% else %}ds-text-muted{% endif %}">
+            {% if competition_active %}Competition is active{% else %}No active competition{% endif %}
+        </p>
+    </div>
+    <div class="ds-stat-card p-5">
+        <p class="ds-section-title">Recorded Rounds</p>
+        <p class="text-2xl font-bold mt-1">{{ rounds | length }}</p>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+    <div class="xl:col-span-2 ds-card p-6 flag-focus-card">
+        <div class="flex items-center justify-between gap-3 mb-4">
+            <div>
+                <h3 class="ds-card-header mb-1">Flag Leaderboard</h3>
+                <p class="text-xs ds-text-secondary">Core ranking of users who solved the real flag first.</p>
+            </div>
+            <span class="ds-badge ds-badge-warning font-semibold">Priority</span>
+        </div>
+
+        {% if progress_board %}
+        <div class="overflow-x-auto">
+            <table class="ds-table text-sm">
+                <thead>
+                    <tr style="border-color: rgba(217, 119, 6, 0.2);">
+                        <th class="py-2 pr-3">Rank</th>
+                        <th class="py-2 pr-3">User</th>
+                        <th class="py-2 pr-3">Progress</th>
+                        <th class="py-2 pr-0">Last Found</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in progress_board %}
+                    <tr style="border-color: rgba(217, 119, 6, 0.1);">
+                        <td class="py-2 pr-3">
+                            <span class="font-semibold {% if row.rank <= 3 %}text-amber-700{% endif %}">
+                                #{{ row.rank }}
+                            </span>
+                        </td>
+                        <td class="py-2 pr-3">
+                            <a href="/panel/users/{{ row.user_id }}" class="ds-link font-medium">
+                                {% if row.username %}@{{ row.username }}{% elif row.first_name %}{{ row.first_name }}{% else %}{{ row.user_id }}{% endif %}
+                            </a>
+                            <p class="text-[11px] ds-text-muted font-mono">{{ row.user_id }}</p>
+                        </td>
+                        <td class="py-2 pr-3">
+                            <span class="ds-badge font-semibold
+                                         {% if total_flags > 0 and row.flags_found >= total_flags %}ds-badge-success
+                                         {% else %}ds-badge-warning{% endif %}">
+                                {{ row.flags_found }}/{{ total_flags }}
+                            </span>
+                        </td>
+                        <td class="py-2 pr-0 ds-text-secondary">{{ row.last_found_at[:19] if row.last_found_at else '-' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="ds-empty-state" style="background: var(--ds-warning-soft); border-color: var(--ds-warning); color: var(--ds-warning-text);">
+            No flag solvers recorded yet.
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="ds-card p-6">
+        <h3 class="ds-card-header mb-1">Competition Leaderboard</h3>
+        <p class="ds-card-desc mb-4">Shows winners from the currently active competition only.</p>
+
+        {% if competition_active and competition_board %}
+        <div class="overflow-x-auto">
+            <table class="ds-table text-sm">
+                <thead>
+                    <tr>
+                        <th class="py-2 pr-3">Rank</th>
+                        <th class="py-2 pr-3">User</th>
+                        <th class="py-2 pr-0">Won At</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in competition_board %}
+                    <tr>
+                        <td class="py-2 pr-3 font-medium">#{{ row.rank }}</td>
+                        <td class="py-2 pr-3">
+                            <a href="/panel/users/{{ row.user_id }}" class="ds-link">
+                                {% if row.username %}@{{ row.username }}{% elif row.first_name %}{{ row.first_name }}{% else %}{{ row.user_id }}{% endif %}
+                            </a>
+                        </td>
+                        <td class="py-2 pr-0 ds-text-secondary">{{ row.won_at[:19] if row.won_at else '-' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% elif competition_active %}
+        <div class="ds-empty-state">
+            Competition is active, but no winners yet.
+        </div>
+        {% else %}
+        <div class="ds-empty-state">
+            Competition ended. Current leaderboard is cleared.
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="mt-6 ds-card p-6">
+    <h3 class="ds-card-header mb-1">Competition Round History</h3>
+    <p class="ds-card-desc mb-4">Open a round to view its recorded ranking.</p>
+
+    {% if rounds %}
+    <div class="space-y-3">
+        {% for r in rounds %}
+        {% set winners = round_winners.get(r.id, []) %}
+        <details class="round-history-item" {% if loop.first %}open{% endif %}>
+            <summary class="round-history-summary list-none cursor-pointer">
+                <div class="min-w-0">
+                    <p class="text-sm font-semibold truncate">
+                        Round #{{ r.id }} · {{ r.question if r.question else '(no question)' }}
+                    </p>
+                    <p class="text-xs ds-text-secondary mt-0.5">
+                        {{ r.started_at[:19] if r.started_at else '-' }}
+                        {% if r.ended_at %}→ {{ r.ended_at[:19] }}{% endif %}
+                        · Winners {{ r.winner_count }}/{{ r.max_winners }}
+                        {% if r.end_reason %}· {{ r.end_reason }}{% endif %}
+                    </p>
+                    {% if r.reward_message %}
+                    <p class="text-xs mt-1" style="color: var(--ds-warning-text);">Reward hint: {{ r.reward_message }}</p>
+                    {% endif %}
+                </div>
+                <span class="round-history-toggle">
+                    {% if winners %}View Ranking{% else %}No Winners{% endif %}
+                </span>
+            </summary>
+            <div class="round-history-content">
+                {% if winners %}
+                <div class="overflow-x-auto">
+                    <table class="ds-table text-sm round-history-table">
+                        <thead>
+                            <tr>
+                                <th class="py-2 pr-3">Rank</th>
+                                <th class="py-2 pr-3">User</th>
+                                <th class="py-2 pr-0">Won At</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for w in winners %}
+                            <tr>
+                                <td class="py-2 pr-3 font-medium">#{{ w.winner_rank if w.winner_rank else '?' }}</td>
+                                <td class="py-2 pr-3">
+                                    <a href="/panel/users/{{ w.user_id }}" class="ds-link">
+                                        {% if w.username %}@{{ w.username }}{% elif w.first_name %}{{ w.first_name }}{% else %}{{ w.user_id }}{% endif %}
+                                    </a>
+                                    <p class="text-[11px] ds-text-muted font-mono">{{ w.user_id }}</p>
+                                </td>
+                                <td class="py-2 pr-0 ds-text-secondary">{{ w.won_at[:19] if w.won_at else '-' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-xs ds-text-secondary">This round ended without a recorded winner.</p>
+                {% endif %}
+            </div>
+        </details>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="ds-empty-state">
+        No competition rounds recorded yet.
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

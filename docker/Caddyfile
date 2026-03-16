@@ -1,0 +1,10 @@
+{$DOMAIN} {
+    # Caddy handles TLS automatically via ACME (Let's Encrypt / ZeroSSL).
+    # No hardcoded certificate paths needed.
+    encode gzip
+
+    @webhook path /webhook*
+    reverse_proxy @webhook bot:8443
+
+    reverse_proxy panel:8000
+}

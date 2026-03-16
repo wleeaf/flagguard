@@ -1,0 +1,30 @@
+.git
+.gitignore
+
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+
+venv/
+.venv/
+
+.env
+.env.*
+production.env
+
+backups/
+*.log
+panel.log
+challenge.log
+
+# Never bake service account keys into images
+api.json
+
+# Dev-only folders
+tests/
+loadtest/
+agent-reviews/
+problems.md

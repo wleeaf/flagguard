@@ -1,0 +1,56 @@
+<!-- Stats cards -->
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+    <div class="ds-stat-card p-5">
+        <p class="ds-section-title">Total</p>
+        <p class="mt-1 text-2xl font-bold">{{ stats.total }}</p>
+    </div>
+    <div class="ds-stat-card p-5" style="border-color: var(--ds-warning);">
+        <p class="ds-section-title" style="color: var(--ds-warning-text);">Open</p>
+        <p class="mt-1 text-2xl font-bold" style="color: var(--ds-warning-text);">{{ stats.open }}</p>
+    </div>
+    <div class="ds-stat-card p-5" style="border-color: var(--ds-success);">
+        <p class="ds-section-title" style="color: var(--ds-success);">Resolved</p>
+        <p class="mt-1 text-2xl font-bold" style="color: var(--ds-success);">{{ stats.resolved }}</p>
+    </div>
+</div>
+
+<!-- Controls bar -->
+<div class="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-6">
+    <!-- Search -->
+    <div class="relative flex-1 max-w-md">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+             stroke-width="1.5" stroke="currentColor"
+             class="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 ds-text-muted">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/>
+        </svg>
+        <input type="text"
+               name="search"
+               value="{{ search }}"
+               placeholder="Search reports..."
+               class="ds-input w-full pl-10"
+               hx-get="/panel/reports"
+               hx-trigger="keyup changed delay:300ms"
+               hx-target="#reports-content"
+               hx-include="[name='search'], [name='status']"
+               hx-push-url="true">
+    </div>
+
+    <!-- Status filter -->
+    <select name="status"
+            class="ds-input"
+            hx-get="/panel/reports"
+            hx-trigger="change"
+            hx-target="#reports-content"
+            hx-include="[name='search'], [name='status']"
+            hx-push-url="true">
+        <option value=""{% if not status_filter %} selected{% endif %}>All statuses</option>
+        <option value="open"{% if status_filter == 'open' %} selected{% endif %}>Open</option>
+        <option value="resolved"{% if status_filter == 'resolved' %} selected{% endif %}>Resolved</option>
+    </select>
+</div>
+
+<!-- Table container -->
+<div id="report-table">
+    {% include "reports/_table.html" %}
+</div>

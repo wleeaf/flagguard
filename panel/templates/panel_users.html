@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% from "_macros.html" import flash_message %}
+{% block title %}Panel Users{% endblock %}
+{% block page_title %}Panel Users{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 gap-6">
+
+    {{ flash_message(msg, msg_type) }}
+
+    <!-- Create new user -->
+    <div class="ds-card p-6">
+        <h3 class="ds-card-header mb-2">Create Panel User</h3>
+        <p class="ds-card-desc mb-4">
+            Password must be at least 12 characters with lowercase, uppercase, and a digit.
+        </p>
+        <form method="post" action="/panel/panel-users/create" hx-boost="false"
+              class="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end" data-validate>
+            <div>
+                <label for="new-username" class="ds-label">Username</label>
+                <input type="text" id="new-username" name="username" required
+                       class="ds-input w-full"
+                       placeholder="username">
+            </div>
+            <div>
+                <label for="new-password" class="ds-label">Password</label>
+                <input type="password" id="new-password" name="password" required minlength="12"
+                       data-validate-complexity
+                       class="ds-input w-full"
+                       placeholder="Password">
+            </div>
+            <div>
+                <label for="new-confirm" class="ds-label">Confirm</label>
+                <input type="password" id="new-confirm" name="confirm_password" required minlength="12"
+                       data-validate-match="password"
+                       class="ds-input w-full"
+                       placeholder="Confirm password">
+            </div>
+            <button type="submit" class="ds-btn-primary whitespace-nowrap">
+                Create User
+            </button>
+        </form>
+    </div>
+
+    <!-- Existing users -->
+    <div class="ds-card p-6">
+        <h3 class="ds-card-header mb-4">Existing Users</h3>
+
+        {% if panel_users %}
+        <div class="overflow-x-auto">
+            <table class="ds-table">
+                <thead>
+                    <tr>
+                        <th>Username</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th>Last Login</th>
+                        <th class="text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for pu in panel_users %}
+                    <tr>
+                        <td class="text-sm font-medium">
+                            {{ pu.username }}
+                            {% if pu.username == user.username %}
+                            <span class="ml-1 text-xs font-medium" style="color: var(--ds-accent);">(you)</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-xs">
+                            {% if pu.is_active %}
+                            <span style="color: var(--ds-success);" class="font-medium">active</span>
+                            {% else %}
+                            <span class="ds-text-muted">inactive</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-xs ds-text-secondary">{{ (pu.created_at or '')[:19] }}</td>
+                        <td class="text-xs ds-text-secondary">{{ (pu.last_login or '-')[:19] }}</td>
+                        <td class="text-right">
+                            <div class="flex items-center justify-end gap-1">
+                                <!-- Change password toggle -->
+                                <button type="button"
+                                        data-toggle-next-row
+                                        class="ds-btn-warning ds-btn-sm">
+                                    Change Password
+                                </button>
+                                <!-- Delete -->
+                                {% if pu.username != user.username %}
+                                <form method="post" action="/panel/panel-users/{{ pu.username }}/delete" hx-boost="false" class="inline">
+                                    <button type="submit"
+                                            data-confirm="Delete panel user '{{ pu.username }}'? This cannot be undone."
+                                            class="ds-btn-danger ds-btn-sm">
+                                        Delete
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    <!-- Inline change-password row (hidden by default) -->
+                    <tr class="hidden" style="background: var(--ds-surface-alt);">
+                        <td colspan="5" class="px-4 py-3">
+                            <form method="post" action="/panel/panel-users/{{ pu.username }}/change-password"
+                                  hx-boost="false"
+                                  class="flex flex-col sm:flex-row items-start sm:items-end gap-2" data-validate>
+                                <span class="text-xs ds-text-secondary font-medium sm:py-2">
+                                    New password for <span class="font-semibold">{{ pu.username }}</span>:
+                                </span>
+                                <input type="password" name="password" required minlength="12"
+                                       data-validate-complexity
+                                       placeholder="New password"
+                                       class="ds-input">
+                                <input type="password" name="confirm_password" required minlength="12"
+                                       data-validate-match="password"
+                                       placeholder="Confirm"
+                                       class="ds-input">
+                                <button type="submit" class="ds-btn-warning ds-btn-sm font-medium">
+                                    Update
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="ds-empty-state">
+            No panel users found.
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

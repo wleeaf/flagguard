@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% from "_macros.html" import flash_message %}
+{% block title %}Admins{% endblock %}
+{% block page_title %}Telegram Admins{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 gap-6">
+
+    {{ flash_message(msg, msg_type) }}
+
+    <!-- Environment Admins (read-only) -->
+    <div class="ds-card p-6">
+        <h3 class="ds-card-header mb-2">Environment Admins (ADMIN_IDS)</h3>
+        <p class="ds-card-desc mb-3">
+            These are set via the <span class="font-mono">ADMIN_IDS</span> environment variable and cannot be modified from the panel.
+        </p>
+        {% if env_admin_ids %}
+        <div class="space-y-1">
+            {% for aid in env_admin_ids %}
+            {% set env_silent = db_admins | selectattr("telegram_id", "equalto", aid|string) | selectattr("silent") | list %}
+            <div class="flex items-center gap-3 px-3 py-2 rounded-lg" style="background: var(--ds-surface-alt); border: 1px solid var(--ds-border);">
+                <span class="text-sm font-mono">{{ aid }}</span>
+                <span class="text-xs ds-text-muted">env</span>
+                {% if env_silent %}
+                <span class="text-xs font-medium" style="color: var(--ds-warning-text);">muted</span>
+                {% endif %}
+                <form method="post" action="/panel/admins/{{ aid }}/toggle-silent" hx-boost="false" class="ml-auto">
+                    <button type="submit"
+                            class="{% if env_silent %}ds-btn-success{% else %}ds-btn-warning{% endif %} ds-btn-sm">
+                        {% if env_silent %}Unmute{% else %}Mute{% endif %}
+                    </button>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-sm ds-text-secondary">No environment admins configured.</p>
+        {% endif %}
+    </div>
+
+    <!-- DB-managed Admins -->
+    <div class="ds-card p-6">
+        <h3 class="ds-card-header mb-2">Database Admins</h3>
+        <p class="ds-card-desc mb-4">
+            Manage Telegram admin IDs stored in the database. These admins have the same privileges as environment admins.
+        </p>
+
+        <!-- Add form -->
+        <form method="post" action="/panel/admins/add" hx-boost="false" class="flex flex-col sm:flex-row gap-2 mb-4" data-validate>
+            <input type="text" name="telegram_id" placeholder="Telegram ID (numeric)"
+                   class="ds-input flex-1"
+                   required pattern="[0-9]+">
+            <input type="text" name="label" placeholder="Label (optional)"
+                   class="ds-input sm:w-48">
+            <button type="submit" class="ds-btn-primary whitespace-nowrap">
+                Add Admin
+            </button>
+        </form>
+
+        {% if db_admins %}
+        <div class="overflow-x-auto">
+            <table class="ds-table">
+                <thead>
+                    <tr>
+                        <th>Telegram ID</th>
+                        <th>Label</th>
+                        <th>Silent</th>
+                        <th>Added At</th>
+                        <th class="text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for admin in db_admins %}
+                    <tr>
+                        <td class="text-sm font-mono">{{ admin.telegram_id }}</td>
+                        <td class="text-sm ds-text-secondary">{{ admin.label or '-' }}</td>
+                        <td class="text-xs">
+                            {% if admin.silent %}
+                            <span style="color: var(--ds-warning-text);" class="font-medium">muted</span>
+                            {% else %}
+                            <span style="color: var(--ds-success);">active</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-xs ds-text-secondary">{{ (admin.added_at or '')[:19] }}</td>
+                        <td class="text-right space-x-1">
+                            <form method="post" action="/panel/admins/{{ admin.telegram_id }}/toggle-silent" hx-boost="false" class="inline">
+                                <button type="submit"
+                                        class="{% if admin.silent %}ds-btn-success{% else %}ds-btn-warning{% endif %} ds-btn-sm">
+                                    {% if admin.silent %}Unmute{% else %}Mute{% endif %}
+                                </button>
+                            </form>
+                            <form method="post" action="/panel/admins/{{ admin.telegram_id }}/remove" hx-boost="false" class="inline">
+                                <button type="submit"
+                                        data-confirm="Remove admin {{ admin.telegram_id }}?"
+                                        class="ds-btn-danger ds-btn-sm">
+                                    Remove
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="ds-empty-state">
+            No database admins added yet.
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

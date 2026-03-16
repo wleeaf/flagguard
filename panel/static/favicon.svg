@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Panel favicon">
+  <defs>
+    <linearGradient id="shieldBg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1d4ed8"/>
+      <stop offset="100%" stop-color="#4f46e5"/>
+    </linearGradient>
+    <linearGradient id="shieldAccent" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#c7d2fe" stop-opacity="0.95"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="64" height="64" rx="14" fill="#0f172a"/>
+  <path d="M32 6 54 14v18c0 14.5-9.7 23.7-22 27C19.7 55.7 10 46.5 10 32V14L32 6Z" fill="url(#shieldBg)"/>
+  <path d="M32 13.5 47.5 19.2v12.6c0 10.2-6.7 16.8-15.5 19.6-8.8-2.8-15.5-9.4-15.5-19.6V19.2L32 13.5Z" fill="#0b1220" opacity="0.28"/>
+  <path d="M22.8 33.5h6.9v7.2h4.6v-7.2h6.9v-4.4h-6.9v-5.8h-4.6v5.8h-6.9v4.4Z" fill="url(#shieldAccent)"/>
+</svg>

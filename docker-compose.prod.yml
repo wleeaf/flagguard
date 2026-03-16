@@ -1,0 +1,96 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-aishield}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+      POSTGRES_DB: ${POSTGRES_DB:-aishield}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  bot:
+    build: .
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-aishield}:${POSTGRES_PASSWORD:-change-me}@postgres:5432/${POSTGRES_DB:-aishield}
+      BOT_MODE: webhook
+      APP_ENV: production
+      WEBHOOK_HOST: 0.0.0.0
+      WEBHOOK_PORT: 8443
+      WEBHOOK_REUSE_PORT: "true"
+      # Runs N bot processes inside one container (SO_REUSEPORT).
+      # For a 4-vCPU VM, 4 workers matches the core count (most time is spent waiting on Vertex AI).
+      BOT_WEBHOOK_WORKERS: ${BOT_WEBHOOK_WORKERS:-4}
+      # Keep per-process pools/threads conservative when running many workers.
+      DATABASE_POOL_MIN_SIZE: ${DATABASE_POOL_MIN_SIZE:-1}
+      DATABASE_POOL_MAX_SIZE: ${DATABASE_POOL_MAX_SIZE:-5}
+      BOT_THREADPOOL_MAX_WORKERS: ${BOT_THREADPOOL_MAX_WORKERS:-8}
+      # Optional: reduce per-process AI concurrency to cap attachment memory spikes.
+      AI_MAX_CONCURRENT_REQUESTS: ${AI_MAX_CONCURRENT_REQUESTS:-4}
+    volumes:
+      - ./api.json:/app/api.json:ro
+      - ./backups:/app/backups
+      - metrics_data:/tmp/aishield-metrics
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8443/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    command: ["bot"]
+
+  panel:
+    build: .
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-aishield}:${POSTGRES_PASSWORD:-change-me}@postgres:5432/${POSTGRES_DB:-aishield}
+      PANEL_HOST: 0.0.0.0
+      PANEL_COOKIE_SECURE: "true"
+      APP_ENV: production
+    volumes:
+      - ./api.json:/app/api.json:ro
+      - ./backups:/app/backups
+      - metrics_data:/tmp/aishield-metrics
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8000/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    command: ["panel"]
+
+  caddy:
+    image: caddy:2
+    environment:
+      DOMAIN: ${DOMAIN:-example.com}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - bot
+      - panel
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:
+  metrics_data:

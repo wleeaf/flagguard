@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="tr" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login — Admin Panel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/static/css/panel.css">
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="shortcut icon" href="/static/favicon.svg">
+</head>
+<body class="h-full flex items-center justify-center"
+      style="background: radial-gradient(ellipse at 50% 0%, rgba(13, 148, 136, 0.15), transparent 60%), radial-gradient(ellipse at 80% 100%, rgba(6, 182, 212, 0.1), transparent 50%), #0c1425;">
+    <div class="w-full max-w-sm px-4">
+        <!-- Brand -->
+        <div class="text-center mb-8">
+            <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4 relative"
+                 style="background: linear-gradient(135deg, #0d9488, #06b6d4); box-shadow: 0 0 30px rgba(13, 148, 136, 0.4), 0 0 60px rgba(6, 182, 212, 0.15);">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                     stroke-width="1.5" stroke="white" class="w-8 h-8">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                          d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z"/>
+                </svg>
+            </div>
+            <h1 class="text-2xl font-bold text-white">Admin Panel</h1>
+            <p class="text-sm text-slate-400 mt-1">Management Panel</p>
+        </div>
+
+        <!-- Login card -->
+        <div class="rounded-2xl p-8"
+             style="background: rgba(21, 31, 48, 0.85); border: 1px solid rgba(42, 58, 80, 0.8); backdrop-filter: blur(12px); box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);">
+            {% if error %}
+            <div class="mb-4 p-3 rounded-lg text-sm"
+                 style="background: rgba(220, 38, 38, 0.15); border: 1px solid rgba(220, 38, 38, 0.3); color: #fca5a5;">
+                {{ error }}
+            </div>
+            {% endif %}
+
+            <form method="post" action="/auth/login" class="space-y-5">
+                <div>
+                    <label for="username" class="block text-sm font-medium text-slate-300 mb-1.5">
+                        Username
+                    </label>
+                    <input type="text" id="username" name="username" required autofocus
+                           class="w-full px-4 py-2.5 rounded-lg text-sm text-white outline-none transition-all"
+                           style="background: rgba(28, 41, 64, 0.8); border: 1px solid rgba(42, 58, 80, 0.9);"
+                           onfocus="this.style.borderColor='#0d9488'; this.style.boxShadow='0 0 0 2px rgba(13, 148, 136, 0.25)'"
+                           onblur="this.style.borderColor='rgba(42, 58, 80, 0.9)'; this.style.boxShadow='none'"
+                           placeholder="admin">
+                </div>
+                <div>
+                    <label for="password" class="block text-sm font-medium text-slate-300 mb-1.5">
+                        Password
+                    </label>
+                    <input type="password" id="password" name="password" required
+                           class="w-full px-4 py-2.5 rounded-lg text-sm text-white outline-none transition-all"
+                           style="background: rgba(28, 41, 64, 0.8); border: 1px solid rgba(42, 58, 80, 0.9);"
+                           onfocus="this.style.borderColor='#0d9488'; this.style.boxShadow='0 0 0 2px rgba(13, 148, 136, 0.25)'"
+                           onblur="this.style.borderColor='rgba(42, 58, 80, 0.9)'; this.style.boxShadow='none'"
+                           placeholder="&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;">
+                </div>
+                <button type="submit"
+                        class="w-full py-2.5 px-4 rounded-lg text-white text-sm font-medium transition-all"
+                        style="background: linear-gradient(135deg, #0d9488, #06b6d4);"
+                        onmouseover="this.style.opacity='0.9'; this.style.boxShadow='0 4px 16px rgba(13, 148, 136, 0.4)'"
+                        onmouseout="this.style.opacity='1'; this.style.boxShadow='none'">
+                    Sign in
+                </button>
+            </form>
+        </div>
+
+        <p class="text-center text-xs text-slate-500 mt-6">
+            CTF Bot &mdash; Admin Panel
+        </p>
+    </div>
+</body>
+</html>

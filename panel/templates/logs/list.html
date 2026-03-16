@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Logs{% endblock %}
+{% block page_title %}Logs{% endblock %}
+
+{% block content %}
+<div class="mb-6 flex flex-col lg:flex-row lg:items-end gap-4 justify-between">
+    <form id="logs-filters" class="grid grid-cols-1 md:grid-cols-2 gap-3 w-full lg:max-w-3xl">
+        <div>
+            <label for="log-search" class="ds-label">Search Message</label>
+            <input id="log-search"
+                   type="text"
+                   name="search"
+                   value="{{ search }}"
+                   placeholder="Search in user and bot messages..."
+                   class="ds-input w-full"
+                   hx-get="/panel/logs"
+                   hx-trigger="keyup changed delay:350ms"
+                   hx-target="#log-table"
+                   hx-include="#logs-filters"
+                   hx-push-url="true">
+        </div>
+        <div>
+            <label for="log-user" class="ds-label">Filter by User</label>
+            <select id="log-user"
+                    name="user_id"
+                    class="ds-input w-full"
+                    hx-get="/panel/logs"
+                    hx-trigger="change"
+                    hx-target="#log-table"
+                    hx-include="#logs-filters"
+                    hx-push-url="true">
+                <option value="">All users</option>
+                {% for u in users %}
+                <option value="{{ u.user_id }}"
+                        {% if filter_user_id == u.user_id|string %}selected{% endif %}>
+                    {% if u.username %}@{{ u.username }} ({{ u.first_name or u.user_id }}){% elif u.first_name %}{{ u.first_name }} (ID: {{ u.user_id }}){% else %}ID: {{ u.user_id }}{% endif %}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+    </form>
+
+    <a href="/panel/logs/export{% if filter_user_id %}?user_id={{ filter_user_id }}{% endif %}"
+       hx-boost="false"
+       class="ds-btn-secondary whitespace-nowrap">
+        Export CSV
+    </a>
+</div>
+
+<div id="log-table">
+    {% include "logs/_table.html" %}
+</div>
+{% endblock %}

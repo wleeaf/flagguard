@@ -1,0 +1,91 @@
+{% if entries %}
+<div class="ds-card overflow-hidden">
+    <table class="ds-table">
+        <thead>
+            <tr>
+                <th class="w-40">Timestamp</th>
+                <th class="w-28">Admin</th>
+                <th class="w-32">Action</th>
+                <th class="w-28">Target</th>
+                <th>Detail</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for entry in entries %}
+            <tr class="align-top">
+                <td class="text-xs font-mono whitespace-nowrap ds-text-muted">
+                    {{ entry.timestamp[:19] if entry.timestamp else '' }}
+                </td>
+                <td class="text-sm font-medium">
+                    {{ entry.username }}
+                </td>
+                <td>
+                    <span class="ds-badge
+                        {% if 'delete' in entry.action or 'reset' in entry.action or 'clear' in entry.action %}
+                            ds-badge-danger
+                        {% elif 'broadcast' in entry.action %}
+                            ds-badge-warning
+                        {% elif 'toggle' in entry.action %}
+                            ds-badge-info
+                        {% else %}
+                            ds-badge-neutral
+                        {% endif %}">
+                        {{ entry.action }}
+                    </span>
+                </td>
+                <td class="text-sm font-mono ds-text-secondary">
+                    {% if entry.target %}
+                    <a href="/panel/users/{{ entry.target }}" class="ds-link">{{ entry.target }}</a>
+                    {% else %}
+                    <span class="ds-text-muted">-</span>
+                    {% endif %}
+                </td>
+                <td class="text-sm ds-text-secondary max-w-xs">
+                    <p class="line-clamp-2">{{ entry.detail or '-' }}</p>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Pagination -->
+{% if total_pages > 1 %}
+<div class="flex items-center justify-between mt-4">
+    <p class="text-sm ds-text-secondary">
+        Showing {{ ((page - 1) * per_page) + 1 }}–{{ [page * per_page, total] | min }} of {{ total }}
+    </p>
+    <div class="flex items-center gap-2">
+        {% if page > 1 %}
+        <a href="/panel/audit?page={{ page - 1 }}"
+           hx-get="/panel/audit?page={{ page - 1 }}"
+           hx-target="#audit-table"
+           hx-push-url="true"
+           class="ds-btn-secondary ds-btn-sm">
+            Previous
+        </a>
+        {% endif %}
+        <span class="text-sm ds-text-secondary">Page {{ page }} / {{ total_pages }}</span>
+        {% if page < total_pages %}
+        <a href="/panel/audit?page={{ page + 1 }}"
+           hx-get="/panel/audit?page={{ page + 1 }}"
+           hx-target="#audit-table"
+           hx-push-url="true"
+           class="ds-btn-secondary ds-btn-sm">
+            Next
+        </a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+{% else %}
+<div class="ds-card p-12 text-center">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+         stroke-width="1" stroke="currentColor" class="w-12 h-12 mx-auto mb-3 ds-text-muted">
+        <path stroke-linecap="round" stroke-linejoin="round"
+              d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25Z"/>
+    </svg>
+    <p class="ds-text-secondary text-sm">No audit log entries yet.</p>
+</div>
+{% endif %}

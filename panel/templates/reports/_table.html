@@ -1,0 +1,119 @@
+{% if reports %}
+<input type="hidden" name="page" value="{{ page }}">
+<div class="ds-card overflow-hidden">
+    <table class="ds-table">
+        <thead>
+            <tr>
+                <th class="w-12">#</th>
+                <th class="w-40">Timestamp</th>
+                <th class="w-36">User</th>
+                <th>Message</th>
+                <th class="w-24">Status</th>
+                <th class="w-24">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for report in reports %}
+            <tr class="align-top">
+                <td class="text-xs ds-text-muted font-mono">{{ report.id }}</td>
+                <td class="text-xs ds-text-muted font-mono whitespace-nowrap">
+                    {{ report.created_at[:19] if report.created_at else '' }}
+                </td>
+                <td>
+                    <a href="/panel/users/{{ report.user_id }}"
+                       class="text-sm ds-link font-medium">
+                        {{ report.first_name or report.user_id }}
+                    </a>
+                    {% if report.username %}
+                    <p class="text-xs ds-text-muted">@{{ report.username }}</p>
+                    {% endif %}
+                </td>
+                <td class="text-sm max-w-md">
+                    <details class="report-log-item">
+                        <summary class="report-log-summary list-none cursor-pointer">
+                            <p class="report-log-message">{{ report.message }}</p>
+                            <span class="report-log-toggle">Expand</span>
+                        </summary>
+                    </details>
+                </td>
+                <td>
+                    {% if report.status == 'open' %}
+                    <span class="ds-badge ds-badge-warning">Open</span>
+                    {% else %}
+                    <span class="ds-badge ds-badge-success">Resolved</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if report.status == 'open' %}
+                    <button hx-post="/panel/reports/{{ report.id }}/resolve"
+                            hx-target="#reports-content"
+                            hx-swap="innerHTML"
+                            hx-include="[name='search'], [name='status'], [name='page']"
+                            class="text-xs font-medium ds-link transition-colors">
+                        Resolve
+                    </button>
+                    {% else %}
+                    <div class="space-y-1">
+                        <button hx-post="/panel/reports/{{ report.id }}/reopen"
+                                hx-target="#reports-content"
+                                hx-swap="innerHTML"
+                                hx-include="[name='search'], [name='status'], [name='page']"
+                                class="text-xs font-medium transition-colors" style="color: var(--ds-warning-text);">
+                            Reopen
+                        </button>
+                        <p class="text-xs ds-text-muted">
+                            {{ report.resolved_by or '' }}
+                        </p>
+                    </div>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Pagination -->
+{% if total_pages > 1 %}
+<div class="flex items-center justify-between mt-4">
+    <p class="text-sm ds-text-secondary">
+        Showing {{ ((page - 1) * per_page) + 1 }}–{{ [page * per_page, total] | min }} of {{ total }}
+    </p>
+    <div class="flex items-center gap-2">
+        {% if page > 1 %}
+        <a href="/panel/reports?search={{ search }}&status={{ status_filter }}&page={{ page - 1 }}"
+           hx-get="/panel/reports?search={{ search }}&status={{ status_filter }}&page={{ page - 1 }}"
+           hx-target="#reports-content"
+           hx-push-url="true"
+           class="ds-btn-secondary ds-btn-sm">
+            Previous
+        </a>
+        {% endif %}
+        <span class="text-sm ds-text-secondary">Page {{ page }} / {{ total_pages }}</span>
+        {% if page < total_pages %}
+        <a href="/panel/reports?search={{ search }}&status={{ status_filter }}&page={{ page + 1 }}"
+           hx-get="/panel/reports?search={{ search }}&status={{ status_filter }}&page={{ page + 1 }}"
+           hx-target="#reports-content"
+           hx-push-url="true"
+           class="ds-btn-secondary ds-btn-sm">
+            Next
+        </a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+{% else %}
+<div class="ds-card p-12 text-center">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+         stroke-width="1" stroke="currentColor" class="w-12 h-12 mx-auto ds-text-muted mb-3">
+        <path stroke-linecap="round" stroke-linejoin="round"
+              d="M21.75 9v.906a2.25 2.25 0 0 1-1.183 1.981l-6.478 3.488M2.25 9v.906a2.25 2.25 0 0 0 1.183 1.981l6.478 3.488m8.839 2.51-4.66-2.51m0 0-1.023-.55a2.25 2.25 0 0 0-2.134 0l-1.022.55m0 0-4.661 2.51m16.5 1.615a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V8.844a2.25 2.25 0 0 1 1.183-1.981l7.5-4.039a2.25 2.25 0 0 1 2.134 0l7.5 4.039a2.25 2.25 0 0 1 1.183 1.98V19.5Z"/>
+    </svg>
+    <p class="ds-text-secondary text-sm">
+        {% if search %}No reports matching "{{ search }}"
+        {% elif status_filter %}No {{ status_filter }} reports
+        {% else %}No reports yet{% endif %}
+    </p>
+</div>
+{% endif %}

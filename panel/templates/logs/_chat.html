@@ -1,0 +1,31 @@
+<div class="chat-container rounded-xl p-3 mx-2 my-2">
+    {% if entry.user_msg %}
+    <div class="flex justify-end mb-2.5">
+        <div class="chat-message-bubble chat-bubble-right">
+            <p class="chat-message-text whitespace-pre-wrap break-words">{{ entry.user_msg }}</p>
+            <div class="chat-message-meta justify-end">
+                <span class="chat-message-author">
+                    {{ entry.first_name or entry.user_id }}
+                </span>
+                <span class="chat-message-time">
+                    {{ entry.timestamp[11:16] if entry.timestamp and entry.timestamp|length > 16 else '' }}
+                </span>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if entry.ai_msg %}
+    <div class="flex justify-start">
+        <div class="chat-message-bubble chat-bubble-left">
+            <p class="chat-message-text whitespace-pre-wrap break-words">{{ entry.ai_msg }}</p>
+            <div class="chat-message-meta">
+                <span class="chat-message-author text-indigo-600">Bot</span>
+                <span class="chat-message-time">
+                    {{ entry.timestamp[11:16] if entry.timestamp and entry.timestamp|length > 16 else '' }}
+                </span>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>

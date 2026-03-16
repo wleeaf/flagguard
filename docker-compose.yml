@@ -1,0 +1,55 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-aishield}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+      POSTGRES_DB: ${POSTGRES_DB:-aishield}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  bot:
+    build: .
+    env_file: .env
+    environment:
+      # Override any host-local DATABASE_URL in .env
+      DATABASE_URL: postgresql://${POSTGRES_USER:-aishield}:${POSTGRES_PASSWORD:-change-me}@postgres:5432/${POSTGRES_DB:-aishield}
+      BOT_MODE: polling
+      APP_ENV: development
+    volumes:
+      - ./api.json:/app/api.json:ro
+      - ./backups:/app/backups
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    command: ["bot"]
+
+  panel:
+    build: .
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-aishield}:${POSTGRES_PASSWORD:-change-me}@postgres:5432/${POSTGRES_DB:-aishield}
+      PANEL_HOST: 0.0.0.0
+      PANEL_COOKIE_SECURE: "false"
+      APP_ENV: development
+    volumes:
+      - ./api.json:/app/api.json:ro
+      - ./backups:/app/backups
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+    command: ["panel"]
+
+volumes:
+  postgres_data:
+

@@ -1,0 +1,120 @@
+{% macro sort_link(column, label) %}
+    {% set new_order = 'asc' if sort == column and order == 'desc' else 'desc' %}
+    <a href="/panel/users?sort={{ column }}&order={{ new_order }}&search={{ search }}&page=1"
+       hx-get="/panel/users?sort={{ column }}&order={{ new_order }}&search={{ search }}&page=1"
+       hx-target="#user-table"
+       hx-push-url="true"
+       class="inline-flex items-center gap-1 transition-colors">
+        {{ label }}
+        {% if sort == column %}
+            {% if order == 'asc' %}
+                <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path d="M5.293 9.707a1 1 0 0 1 0-1.414l4-4a1 1 0 0 1 1.414 0l4 4a1 1 0 0 1-1.414 1.414L10 6.414l-3.293 3.293a1 1 0 0 1-1.414 0Z"/></svg>
+            {% else %}
+                <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path d="M14.707 10.293a1 1 0 0 1 0 1.414l-4 4a1 1 0 0 1-1.414 0l-4-4a1 1 0 1 1 1.414-1.414L10 13.586l3.293-3.293a1 1 0 0 1 1.414 0Z"/></svg>
+            {% endif %}
+        {% endif %}
+    </a>
+{% endmacro %}
+
+{% if users %}
+<div class="ds-card overflow-hidden">
+    <table class="ds-table">
+        <thead>
+            <tr>
+                <th>{{ sort_link("user_id", "User ID") }}</th>
+                <th>{{ sort_link("first_name", "Name") }}</th>
+                <th>{{ sort_link("username", "Username") }}</th>
+                <th class="text-right">{{ sort_link("total_requests", "Requests") }}</th>
+                <th class="text-right">{{ sort_link("jailbreak_attempts", "Jailbreaks") }}</th>
+                <th class="text-right">{{ sort_link("suspicious_score", "Score") }}</th>
+                <th>{{ sort_link("last_seen", "Last Seen") }}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for u in users %}
+            <tr>
+                <td>
+                    <a href="/panel/users/{{ u.user_id }}"
+                       class="text-sm font-mono ds-link">
+                        {{ u.user_id }}
+                    </a>
+                </td>
+                <td class="text-sm">{{ u.first_name or '-' }}</td>
+                <td class="text-sm ds-text-secondary">{{ ('@' + u.username) if u.username else '-' }}</td>
+                <td class="text-sm text-right">{{ u.total_requests }}</td>
+                <td class="text-right">
+                    {% if u.jailbreak_attempts > 0 %}
+                        <span class="ds-badge
+                                     {% if u.jailbreak_attempts >= 10 %}ds-badge-danger
+                                     {% elif u.jailbreak_attempts >= 5 %}ds-badge-warning
+                                     {% else %}ds-badge-neutral{% endif %}">
+                            {{ u.jailbreak_attempts }}
+                        </span>
+                    {% else %}
+                        <span class="text-sm ds-text-muted">0</span>
+                    {% endif %}
+                </td>
+                <td class="text-right">
+                    {% if u.suspicious_score >= 60 %}
+                        <span class="ds-badge ds-badge-danger">
+                            {{ u.suspicious_score }}
+                        </span>
+                    {% elif u.suspicious_score >= 30 %}
+                        <span class="ds-badge ds-badge-warning">
+                            {{ u.suspicious_score }}
+                        </span>
+                    {% else %}
+                        <span class="text-sm ds-text-secondary">{{ u.suspicious_score }}</span>
+                    {% endif %}
+                </td>
+                <td class="text-sm ds-text-secondary">
+                    {{ u.last_seen[:16] if u.last_seen else '-' }}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Pagination -->
+{% if total_pages > 1 %}
+<div class="flex items-center justify-between mt-4">
+    <p class="text-sm ds-text-secondary">
+        Showing {{ ((page - 1) * per_page) + 1 }}–{{ [page * per_page, total] | min }} of {{ total }}
+    </p>
+    <div class="flex items-center gap-2">
+        {% if page > 1 %}
+        <a href="/panel/users?sort={{ sort }}&order={{ order }}&search={{ search }}&page={{ page - 1 }}"
+           hx-get="/panel/users?sort={{ sort }}&order={{ order }}&search={{ search }}&page={{ page - 1 }}"
+           hx-target="#user-table"
+           hx-push-url="true"
+           class="ds-btn-secondary ds-btn-sm">
+            Previous
+        </a>
+        {% endif %}
+        <span class="text-sm ds-text-secondary">Page {{ page }} / {{ total_pages }}</span>
+        {% if page < total_pages %}
+        <a href="/panel/users?sort={{ sort }}&order={{ order }}&search={{ search }}&page={{ page + 1 }}"
+           hx-get="/panel/users?sort={{ sort }}&order={{ order }}&search={{ search }}&page={{ page + 1 }}"
+           hx-target="#user-table"
+           hx-push-url="true"
+           class="ds-btn-secondary ds-btn-sm">
+            Next
+        </a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+{% else %}
+<div class="ds-card p-12 text-center">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+         stroke-width="1" stroke="currentColor" class="w-12 h-12 mx-auto mb-3 ds-text-muted">
+        <path stroke-linecap="round" stroke-linejoin="round"
+              d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"/>
+    </svg>
+    <p class="ds-text-secondary text-sm">
+        {% if search %}No users matching "{{ search }}"{% else %}No users yet{% endif %}
+    </p>
+</div>
+{% endif %}

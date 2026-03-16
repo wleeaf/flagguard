@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% from "_macros.html" import flash_message %}
+{% block title %}Competition{% endblock %}
+{% block page_title %}Competition{% endblock %}
+
+{% block content %}
+
+{{ flash_message(msg, msg_type) }}
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+    <!-- Current state -->
+    <div class="lg:col-span-2 ds-card p-6">
+        <h3 class="ds-card-header mb-4">Current Competition</h3>
+
+        {% if state.active %}
+        <div class="space-y-4">
+            <div class="flex items-center gap-2">
+                <span class="ds-badge ds-badge-success">
+                    <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                    ACTIVE
+                </span>
+                {% if state.deadline %}
+                <span class="ds-badge ds-badge-warning">
+                    Deadline: {{ state.deadline }}
+                </span>
+                {% else %}
+                <span class="ds-badge ds-badge-neutral">
+                    No time limit
+                </span>
+                {% endif %}
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                    <span class="ds-text-muted">Answer:</span>
+                    <span class="font-mono font-medium ml-2">{{ state.answer }}</span>
+                </div>
+                <div>
+                    <span class="ds-text-muted">Question:</span>
+                    <span class="ml-2">{{ state.question }}</span>
+                </div>
+            </div>
+
+            {% if state.reward_message %}
+            <div class="text-sm">
+                <span class="ds-text-muted">Reward Message:</span>
+                <span class="ml-2">{{ state.reward_message }}</span>
+            </div>
+            {% endif %}
+
+            <!-- Progress bar -->
+            <div>
+                <div class="flex items-center justify-between text-sm mb-1">
+                    <span class="ds-text-secondary">Winners</span>
+                    <span class="font-medium">{{ winners | length }} / {{ max_winners }}</span>
+                </div>
+                <div class="w-full rounded-full h-2" style="background: var(--ds-surface-alt);">
+                    {% set pct = ((winners | length) / max_winners * 100) if max_winners > 0 else 0 %}
+                    <div class="h-2 rounded-full transition-all" style="width: {{ pct }}%; background: var(--ds-accent);"></div>
+                </div>
+            </div>
+
+            <!-- Winner list -->
+            {% if winner_profiles %}
+            <div>
+                <h4 class="ds-section-title mb-2">Winners</h4>
+                <div class="flex flex-wrap gap-2">
+                    {% for w in winner_profiles %}
+                    <a href="/panel/users/{{ w.user_id }}"
+                       class="ds-badge ds-badge-warning hover:opacity-80 transition-opacity">
+                        {% if w.username %}@{{ w.username }}{% elif w.first_name %}{{ w.first_name }}{% else %}{{ w.user_id }}{% endif %}
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- End button -->
+            <form method="post" action="/panel/competition/end" hx-boost="false" class="pt-2">
+                <button type="submit"
+                        data-confirm="End the current competition?"
+                        class="ds-btn-danger">
+                    End Competition
+                </button>
+            </form>
+        </div>
+
+        {% else %}
+        <div class="flex items-center gap-3 ds-text-muted py-4">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                 stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636"/>
+            </svg>
+            <span class="text-sm">No active competition. Use the form to set one up.</span>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Setup form -->
+    <div class="ds-card p-6">
+        <h3 class="ds-card-header mb-4">
+            {% if state.active %}Replace Competition{% else %}New Competition{% endif %}
+        </h3>
+        <form method="post" action="/panel/competition/setup" hx-boost="false" class="space-y-4" data-validate>
+            <div>
+                <label for="answer" class="ds-label">Answer</label>
+                <input type="text" id="answer" name="answer" required
+                       class="ds-input w-full"
+                       placeholder="The correct answer (lowercase)">
+            </div>
+            <div>
+                <label for="question" class="ds-label">Question</label>
+                <input type="text" id="question" name="question" required
+                       class="ds-input w-full"
+                       placeholder="The question to ask participants">
+            </div>
+            <div>
+                <label for="reward_message" class="ds-label">Reward Message</label>
+                <input type="text" id="reward_message" name="reward_message"
+                       class="ds-input w-full"
+                       placeholder="Message sent to winners (optional)">
+            </div>
+            <div>
+                <label for="time_limit" class="ds-label">Time Limit</label>
+                <select id="time_limit" name="time_limit" class="ds-input w-full">
+                    <option value="forever">Forever (no limit)</option>
+                    <option value="15">15 minutes</option>
+                    <option value="30">30 minutes</option>
+                    <option value="60">1 hour</option>
+                    <option value="120">2 hours</option>
+                    <option value="360">6 hours</option>
+                    <option value="720">12 hours</option>
+                    <option value="1440">24 hours</option>
+                    <option value="4320">3 days</option>
+                    <option value="10080">7 days</option>
+                </select>
+            </div>
+            <button type="submit"
+                    {% if state.active %}data-confirm="This will replace the current competition and clear all winners."{% endif %}
+                    class="ds-btn-primary w-full">
+                {% if state.active %}Replace & Restart{% else %}Create Competition{% endif %}
+            </button>
+        </form>
+
+        <!-- Max winners setting -->
+        <div class="mt-6 pt-6 ds-divider">
+            <h4 class="ds-card-header mb-3">Max Winners</h4>
+            <form method="post" action="/panel/competition/max-winners" hx-boost="false" class="flex items-end gap-3">
+                <div class="flex-1">
+                    <input type="number" name="max_winners" min="1" value="{{ max_winners }}" required
+                           class="ds-input w-full">
+                </div>
+                <button type="submit" class="ds-btn-secondary shrink-0">
+                    Update
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

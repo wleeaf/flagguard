@@ -1,0 +1,72 @@
+<!-- Stats cards -->
+<div class="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
+    <div class="ds-stat-card p-5">
+        <p class="ds-section-title">Total</p>
+        <p class="mt-1 text-2xl font-bold">{{ stats.total }}</p>
+    </div>
+    <div class="ds-stat-card p-5" style="border-color: var(--ds-danger);">
+        <p class="ds-section-title" style="color: var(--ds-danger);">Flag Leak Blocked</p>
+        <p class="mt-1 text-2xl font-bold" style="color: var(--ds-danger);">{{ stats.flag_leak_blocked }}</p>
+    </div>
+    <div class="ds-stat-card p-5" style="border-color: var(--ds-warning);">
+        <p class="ds-section-title" style="color: var(--ds-warning-text);">Errors</p>
+        <p class="mt-1 text-2xl font-bold" style="color: var(--ds-warning-text);">{{ stats.error }}</p>
+    </div>
+    <div class="ds-stat-card p-5" style="border-color: var(--ds-info);">
+        <p class="ds-section-title" style="color: var(--ds-info);">User Reports</p>
+        <p class="mt-1 text-2xl font-bold" style="color: var(--ds-info);">{{ stats.user_report }}</p>
+    </div>
+</div>
+
+<!-- Controls bar -->
+<div class="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-6">
+    <!-- Search -->
+    <div class="relative flex-1 max-w-md">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+             stroke-width="1.5" stroke="currentColor"
+             class="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 ds-text-muted">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/>
+        </svg>
+        <input type="text"
+               name="search"
+               value="{{ search }}"
+               placeholder="Search events..."
+               class="ds-input w-full pl-10"
+               hx-get="/panel/events"
+               hx-trigger="keyup changed delay:300ms"
+               hx-target="#events-content"
+               hx-include="[name='search'], [name='event_type']"
+               hx-push-url="true">
+    </div>
+
+    <!-- Type filter -->
+    <select name="event_type"
+            class="ds-input"
+            hx-get="/panel/events"
+            hx-trigger="change"
+            hx-target="#events-content"
+            hx-include="[name='search'], [name='event_type']"
+            hx-push-url="true">
+        <option value=""{% if not type_filter %} selected{% endif %}>All types</option>
+        <option value="flag_leak_blocked"{% if type_filter == 'flag_leak_blocked' %} selected{% endif %}>Flag Leak Blocked</option>
+        <option value="error"{% if type_filter == 'error' %} selected{% endif %}>Error</option>
+        <option value="user_report"{% if type_filter == 'user_report' %} selected{% endif %}>User Report</option>
+    </select>
+
+    <!-- Clear All -->
+    {% if stats.total > 0 %}
+    <button hx-post="/panel/events/clear"
+            hx-target="#events-content"
+            hx-swap="innerHTML"
+            hx-confirm="Delete all {{ stats.total }} events? This cannot be undone."
+            class="ds-btn-danger">
+        Clear All
+    </button>
+    {% endif %}
+</div>
+
+<!-- Table container -->
+<div id="event-table">
+    {% include "events/_table.html" %}
+</div>

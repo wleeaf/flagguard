@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+{% from "_macros.html" import flash_message %}
+{% block title %}Flags{% endblock %}
+{% block page_title %}CTF Flags{% endblock %}
+
+{% block content %}
+
+{{ flash_message(msg, msg_type) }}
+
+<!-- Stat card -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+    <div class="ds-stat-card p-5" style="border-color: rgba(217, 119, 6, 0.3);">
+        <p class="ds-section-title" style="color: var(--ds-warning-text);">Total Flags</p>
+        <p class="text-2xl font-bold mt-1">{{ total_flags }}</p>
+    </div>
+</div>
+
+<!-- Flags list -->
+<div class="ds-card p-6 mb-6">
+    <h3 class="ds-card-header mb-4">All Flags (ordered by position)</h3>
+
+    {% if flags %}
+    <div id="flags-list" class="space-y-2">
+        {% for flag in flags %}
+        <div class="ds-card p-3" data-flag-id="{{ flag.id }}" style="border-color: var(--ds-border);">
+            <div class="flex items-center gap-3">
+                <!-- Drag handle -->
+                <span class="flag-drag-handle cursor-grab select-none flex-shrink-0" style="color: var(--ds-text-muted);" title="Drag to reorder">&#9776;</span>
+                <!-- Position badge -->
+                <span class="flag-position font-semibold flex-shrink-0 text-sm" style="min-width: 2rem;">#{{ flag.position }}</span>
+                <!-- Flag value + tag + notify -->
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <code class="text-xs px-1.5 py-0.5 rounded font-mono truncate" style="background: var(--ds-surface-alt); max-width: 300px; display: inline-block;">{{ flag.flag_value[:50] }}{% if flag.flag_value|length > 50 %}...{% endif %}</code>
+                        {% if flag.tag %}
+                        <span class="ds-badge ds-badge-accent flex-shrink-0" style="font-size: 10px;">{{ flag.tag }}</span>
+                        {% endif %}
+                        {% if flag.notify_on_find %}
+                        <span class="ds-badge ds-badge-success flex-shrink-0" style="font-size: 10px;">Notify</span>
+                        {% endif %}
+                    </div>
+                    {% if flag.success_message %}
+                    <p class="ds-text-muted text-xs mt-1 truncate">{{ flag.success_message[:80] }}{% if flag.success_message|length > 80 %}...{% endif %}</p>
+                    {% endif %}
+                </div>
+                <!-- Actions -->
+                <div class="flex items-center gap-2 flex-shrink-0">
+                    <button type="button"
+                            data-edit-flag
+                            data-flag-id="{{ flag.id }}"
+                            data-flag-value="{{ flag.flag_value }}"
+                            data-flag-message="{{ flag.success_message or '' }}"
+                            data-flag-tag="{{ flag.tag or '' }}"
+                            data-flag-notify="{{ 'on' if flag.notify_on_find else '' }}"
+                            data-flag-notify-message="{{ flag.notify_message or '' }}"
+                            class="ds-btn-secondary ds-btn-sm">
+                        Edit
+                    </button>
+                    <form method="post" action="/panel/flags/{{ flag.id }}/delete" hx-boost="false">
+                        <button type="submit"
+                                data-confirm="Delete flag #{{ flag.position }}? This will cascade-delete all user progress for this flag and reorder remaining flags."
+                                class="ds-btn-danger ds-btn-sm">
+                            Delete
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="ds-empty-state">
+        No flags defined yet. Add one below.
+    </div>
+    {% endif %}
+</div>
+
+<!-- Add new flag form -->
+<div class="ds-card p-6 mb-6">
+    <h3 class="ds-card-header mb-4">Add New Flag</h3>
+    <form method="post" action="/panel/flags" hx-boost="false" class="space-y-3" data-validate>
+        <div>
+            <label for="new-flag-value" class="ds-label">Flag Value</label>
+            <input type="text" id="new-flag-value" name="flag_value" required
+                   class="ds-input w-full"
+                   placeholder="{{ flag_prefix() }}{...}">
+        </div>
+        <div>
+            <label for="new-flag-message" class="ds-label">Success Message (optional)</label>
+            <textarea id="new-flag-message" name="success_message" rows="2"
+                      class="ds-input w-full resize-y"
+                      placeholder="Custom message shown when user finds this flag (leave empty for default)"></textarea>
+        </div>
+        <div>
+            <label for="new-flag-tag" class="ds-label">Tag (optional)</label>
+            <input type="text" id="new-flag-tag" name="tag"
+                   class="ds-input w-full"
+                   placeholder="e.g. AI Bot, Phase 2, Bonus">
+        </div>
+        <div>
+            <label class="ds-label flex items-center gap-2">
+                <input type="checkbox" name="notify_on_find" value="on">
+                <span>Notify on find</span>
+            </label>
+        </div>
+        <div>
+            <label for="new-flag-notify-message" class="ds-label">Notification Message (optional)</label>
+            <textarea id="new-flag-notify-message" name="notify_message" rows="2"
+                      class="ds-input w-full resize-y"
+                      placeholder="Custom HTML broadcast when this flag is found (leave empty for default template)"></textarea>
+            <details class="mt-1">
+                <summary class="ds-text-muted text-xs cursor-pointer select-none">Available placeholders</summary>
+                <div class="ds-text-muted text-xs mt-1 space-y-0.5" style="line-height: 1.6;">
+                    <code>{who}</code> — @username, first name, or ID<br>
+                    <code>{username}</code> — raw username (no @)<br>
+                    <code>{first_name}</code> — first name<br>
+                    <code>{flag_position}</code> — e.g. 3<br>
+                    <code>{flag_tag}</code> — e.g. AI Bot<br>
+                    <code>{flag_label}</code> — e.g. Flag #3 — AI Bot<br>
+                    <code>{found_count}</code> — users who found this flag<br>
+                    <code>{total_users}</code> — total known users
+                </div>
+            </details>
+        </div>
+        <button type="submit" class="ds-btn-primary">
+            Add Flag
+        </button>
+    </form>
+</div>
+
+<!-- Edit flag modal -->
+<div id="edit-flag-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="edit-flag-modal-title">
+    <div id="edit-flag-backdrop" class="absolute inset-0 ds-modal-backdrop"></div>
+    <div id="edit-flag-box"
+         class="relative ds-modal-box w-full max-w-md mx-4 transform transition-all duration-200 scale-95 opacity-0">
+        <div class="px-6 pt-5 pb-4">
+            <h3 id="edit-flag-modal-title" class="text-base font-semibold mb-4">Edit Flag</h3>
+            <form id="edit-flag-form" method="post" hx-boost="false" class="space-y-3">
+                <div>
+                    <label for="edit-flag-value" class="ds-label">Flag Value</label>
+                    <input type="text" id="edit-flag-value" name="flag_value" required
+                           class="ds-input w-full">
+                </div>
+                <div>
+                    <label for="edit-flag-message" class="ds-label">Success Message</label>
+                    <textarea id="edit-flag-message" name="success_message" rows="3"
+                              class="ds-input w-full resize-y"></textarea>
+                </div>
+                <div>
+                    <label for="edit-flag-tag" class="ds-label">Tag</label>
+                    <input type="text" id="edit-flag-tag" name="tag"
+                           class="ds-input w-full"
+                           placeholder="e.g. AI Bot, Phase 2, Bonus">
+                </div>
+                <div>
+                    <label class="ds-label flex items-center gap-2">
+                        <input type="checkbox" id="edit-flag-notify" name="notify_on_find" value="on">
+                        <span>Notify on find</span>
+                    </label>
+                </div>
+                <div>
+                    <label for="edit-flag-notify-message" class="ds-label">Notification Message</label>
+                    <textarea id="edit-flag-notify-message" name="notify_message" rows="3"
+                              class="ds-input w-full resize-y"
+                              placeholder="Custom HTML broadcast when found (leave empty for default)"></textarea>
+                    <details class="mt-1">
+                        <summary class="ds-text-muted text-xs cursor-pointer select-none">Available placeholders</summary>
+                        <div class="ds-text-muted text-xs mt-1 space-y-0.5" style="line-height: 1.6;">
+                            <code>{who}</code> — @username, first name, or ID<br>
+                            <code>{username}</code> — raw username (no @)<br>
+                            <code>{first_name}</code> — first name<br>
+                            <code>{flag_position}</code> — e.g. 3<br>
+                            <code>{flag_tag}</code> — e.g. AI Bot<br>
+                            <code>{flag_label}</code> — e.g. Flag #3 — AI Bot<br>
+                            <code>{found_count}</code> — users who found this flag<br>
+                            <code>{total_users}</code> — total known users
+                        </div>
+                    </details>
+                </div>
+                <div class="flex gap-3 pt-2">
+                    <button type="submit" class="flex-1 ds-btn-primary">
+                        Save
+                    </button>
+                    <button type="button" id="edit-flag-cancel" class="flex-1 ds-btn-secondary">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

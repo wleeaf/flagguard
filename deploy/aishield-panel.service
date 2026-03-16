@@ -1,0 +1,31 @@
+[Unit]
+Description=AIShield Admin Panel
+After=network.target
+
+[Service]
+Type=simple
+User=aishield
+WorkingDirectory=/opt/aishield
+EnvironmentFile=/opt/aishield/.env
+ExecStart=/opt/aishield/venv/bin/python -m panel.cli run
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+# Security hardening
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/opt/aishield/backups /opt/aishield/logs
+MemoryDenyWriteExecute=no
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+
+[Install]
+WantedBy=multi-user.target
