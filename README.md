@@ -1,364 +1,358 @@
-# AIShield (ai-telegram-bot)
+# FlagGuard
 
-AIShield is a Telegram bot that routes user messages to **Gemini (Vertex AI)** and includes a **FastAPI admin panel** for monitoring, backups, and operational controls.
+An AI-powered Telegram bot for CTF competitions. Players try to extract a secret flag from an AI that actively defends it. Comes with a web admin panel, multi-flag sequential challenges, difficulty tiers, and a full security stack.
 
-This README focuses on the simplest path to clone, configure, and deploy on Ubuntu 24.04 with PostgreSQL.
+Built on Google Gemini (Vertex AI), PostgreSQL, and Docker.
 
-## Docker (Easy Mode, Recommended)
+---
 
-If you use Docker, you do not need to install PostgreSQL on the host. Docker Compose will run:
-- Postgres
-- the bot
-- the admin panel
+## Table of Contents
 
-### Install Docker (Ubuntu 24.04)
+- [How It Works](#how-it-works)
+- [Features](#features)
+- [Quick Start (Docker)](#quick-start-docker)
+- [Production Deployment](#production-deployment)
+- [Configuration Reference](#configuration-reference)
+- [Manual Setup (No Docker)](#manual-setup-no-docker)
+- [Architecture](#architecture)
+
+---
+
+## How It Works
+
+1. You define one or more flags in the admin panel.
+2. The AI bot receives the flags in its system prompt and is instructed to protect them.
+3. Players message the bot on Telegram, trying to trick the AI into revealing the flag.
+4. The bot uses layered defenses (jailbreak detection, output sanitization, honeypot traps, behavior analysis) to prevent leaks.
+5. When a player submits the correct flag, the bot records their solve and optionally notifies admins.
+
+The difficulty level controls how hard the AI defends. At EASY, the bot is generous with hints. At IMPOSSIBLE, it blocks every known extraction technique.
+
+---
+
+## Features
+
+### Multi-Flag CTF System
+
+- Sequential flag progression: players must solve flags in order.
+- Per-flag configurable success messages, tags, and admin notifications.
+- Full progress tracking and leaderboard.
+- Manage everything from the web panel: create, edit, delete, reorder flags.
+
+### Four Difficulty Tiers
+
+| Level | Behavior |
+|---|---|
+| Easy | Generous hints, creative flag delivery allowed, minimal guardrails. |
+| Medium | No full flag, but thematic hints reward creative approaches. |
+| Hard | Strict defense, only structural hints for genuinely creative attempts. |
+| Impossible | Zero tolerance. Flag never delivered. All extraction techniques blocked. |
+
+Each tier has its own AI temperature, context window size, message length limits, jailbreak thresholds, and honeypot activation rates. Difficulty can be changed at runtime from the panel or Telegram.
+
+### Security Stack
+
+**Jailbreak Detection** -- 50+ weighted patterns covering direct bypass attempts, encoding requests, role-play framing, Turkish-language variants, repetition abuse, entropy anomalies, delimiter flooding, and special character density. Score-based: each pattern contributes points, and the threshold varies by difficulty.
+
+**Output Sanitization** -- Blocks the literal flag string, flag format patterns, partial flag substring leaks, encoded content (base64), and system prompt metadata keywords from appearing in AI responses.
+
+**Honeypot System** -- Serves fake admin panels, error messages, debug output, and database dumps to trap social engineering attempts. Probability-based activation that scales with difficulty.
+
+**Behavior Analysis** -- Tracks per-user jailbreak ratios, suspicion scores, and honeypot catches. Flags high-risk users automatically.
+
+### AI Configuration
+
+- Model: Google Gemini via Vertex AI (configurable model ID).
+- Per-difficulty system prompts with shared personality rules and independent security documents.
+- Editable from the web panel: global personality and per-difficulty security docs with live preview.
+- Supports image, audio, and video attachments in messages.
+- Conversation history per user (configurable depth per difficulty).
+
+### Web Admin Panel
+
+- **Dashboard** -- Live statistics, request charts (24h/3d/7d/30d), recent activity, competition state.
+- **Prompt Editor** -- Edit shared personality and per-difficulty security documents with placeholder preview.
+- **Flag Management** -- Full CRUD for CTF flags with drag-and-drop reordering.
+- **User Management** -- Behavior stats, conversation history, per-user actions.
+- **Moderation** -- Ban, timeout, unban users with configurable durations.
+- **Competition Manager** -- Start timed rounds, track winners, manage leaderboards.
+- **Logs** -- Conversation logs, message logs, admin messages, bot events, audit trail.
+- **Reports** -- View and resolve user-submitted reports.
+- **Controls** -- Toggle maintenance/silent modes, change difficulty, manage backups, database reset.
+- **Backup/Restore** -- PostgreSQL dumps via pg_dump, restore from panel, configurable retention.
+
+### Competition System
+
+Separate from the flag challenges. Admins post a question and an answer. Players race to answer correctly. Supports max winner limits, timed deadlines, auto-end, and persistent leaderboards.
+
+### Telegram Commands
+
+**Players:** `/start`, `/help`, `/difficulty`, `/reset`, `/report`, `/answer`, `/id`
+
+**Admins:** `/stats`, `/user`, `/ban`, `/unban`, `/timeout`, `/untimeout`, `/dm`, `/broadcast`, `/backup`, `/maintenance`, `/silent`, `/competition_setup`, `/competition_end`, `/competition_status`, `/leaderboard`, `/set_maxwinner_count`, `/top_jailbreakers`
+
+### Operational
+
+- Circuit breaker with automatic recovery for AI API failures.
+- Global RPM quota shared across workers via PostgreSQL.
+- Three-layer rate limiting (per-user cooldown, sliding window, global RPM).
+- Async batched message logging to reduce database pressure.
+- Durable broadcast queue with retry logic.
+- Prometheus-compatible metrics endpoint.
+- Multi-worker webhook mode with SO_REUSEPORT for horizontal scaling.
+- Graceful shutdown with queue draining.
+- Auto-cleanup of old logs (configurable retention).
+
+---
+
+## Quick Start (Docker)
+
+### Prerequisites
+
+- Docker and Docker Compose
+- A Telegram bot token (from [@BotFather](https://t.me/BotFather))
+- A Google Cloud service account JSON key with Vertex AI access
+
+### 1. Clone and configure
 
 ```bash
-sudo apt update
-sudo apt install -y docker.io docker-compose-plugin
-sudo systemctl enable --now docker
-sudo usermod -aG docker "$USER"
-newgrp docker
-```
-
-### Local (Polling + Panel)
-
-1. Create `.env`:
-
-```bash
+git clone https://github.com/ts-solidarity/flagguard.git
+cd flagguard
 cp .env.example .env
 ```
 
-Minimum keys you must fill:
-- `TELEGRAM_TOKEN`
-- `ADMIN_IDS`
-- `CHALLENGE_FLAG`
-- `PANEL_SECRET_KEY`
-- `SERVICE_ACCOUNT_PATH` (defaults to `api.json`)
+Edit `.env` and fill in the required values:
 
-2. Put your Vertex service account JSON at `./api.json` (same directory as `Dockerfile`).
+```env
+TELEGRAM_TOKEN=your_bot_token
+ADMIN_IDS=your_telegram_user_id
+CHALLENGE_FLAG=FLAG{your_secret_flag}
+PANEL_SECRET_KEY=run_openssl_rand_hex_32
+DATABASE_URL=postgresql://aishield:change-me@postgres:5432/aishield
+```
 
-3. Start everything:
+### 2. Add your service account key
+
+```bash
+cp /path/to/your-service-account.json ./api.json
+```
+
+### 3. Start
 
 ```bash
 docker compose up -d --build
 ```
 
-Panel:
-- `http://127.0.0.1:8000`
+This starts PostgreSQL, the bot (polling mode), and the admin panel.
 
-Create the first panel admin:
+### 4. Create the first admin user
 
 ```bash
 docker compose exec panel python -m panel.cli create-admin
 ```
 
-### Production (Webhook + HTTPS via Caddy)
+Panel is at `http://localhost:8000`.
 
-Requirements:
-- a domain pointing to your server (A/AAAA record)
-- ports `80` and `443` open
+The bot auto-creates all database tables on first startup. The `CHALLENGE_FLAG` from your `.env` is automatically seeded as the first CTF flag.
 
-1. In `.env`, set at least:
-- `APP_ENV=production`
-- `WEBHOOK_URL=https://yourdomain.com` (your domain)
-- `WEBHOOK_SECRET_TOKEN` (>= 16 chars)
-- `DOMAIN=yourdomain.com` (used by Caddy)
-- `POSTGRES_PASSWORD` (set a strong password)
+---
 
-2. Start production stack:
+## Production Deployment
 
-```bash
-docker compose -f docker-compose.prod.yml up -d --build
-```
+Production mode uses webhook delivery, multiple bot workers, HTTPS via Caddy, and hardened settings.
 
-Notes:
-- The webhook endpoint will be `https://yourdomain.com/webhook` (controlled by `WEBHOOK_PATH`).
-- `BOT_WEBHOOK_WORKERS` controls how many bot processes run inside the container. On 4 vCPU, `8` is a reasonable starting point.
+### Prerequisites
 
-## 1) Clone
+- A server with a domain name pointing to it (A/AAAA record).
+- Ports 80 and 443 open.
 
-```bash
-git clone <REPO_URL> ai-telegram-bot
-cd ai-telegram-bot
-```
+### 1. Configure `.env` for production
 
-## 2) Install System Packages (Ubuntu 24.04)
-
-```bash
-sudo apt update
-sudo apt install -y git python3-venv python3-pip postgresql postgresql-contrib postgresql-client
-sudo systemctl enable --now postgresql
-```
-
-Notes:
-- `postgresql-client` provides `pg_dump` and `pg_restore` (needed for panel backups/restores).
-
-## 3) Create a Python Virtualenv + Install Dependencies
-
-```bash
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-```
-
-## 4) PostgreSQL Setup
-
-### 4.1 Create DB user + database
-
-```bash
-sudo -u postgres psql
-```
-
-In the `psql` prompt:
-
-```sql
-CREATE USER aishield WITH PASSWORD 'CHANGE_ME';
-CREATE DATABASE aishield OWNER aishield;
-GRANT ALL PRIVILEGES ON DATABASE aishield TO aishield;
-\q
-```
-
-### 4.2 Verify connection
-
-```bash
-psql "postgresql://aishield:CHANGE_ME@127.0.0.1:5432/aishield" -c "select now();"
-```
-
-## 5) Vertex AI (Gemini) Setup
-
-This project uses the **Vertex AI** backend via a **service account JSON key**.
-
-You need:
-- A GCP project with Vertex AI enabled
-- A service account with permissions to call Vertex AI
-- A downloaded JSON key file
-
-Place the JSON key on disk (example: project root):
-
-```bash
-cp /path/to/service-account.json ./api.json
-chmod 600 ./api.json
-```
-
-## 6) Configure `.env`
-
-Copy the example:
-
-```bash
-cp .env.example .env
-```
-
-Minimum required keys (the bot will refuse to start if these are missing):
-
-```env
-# Telegram
-TELEGRAM_TOKEN=123456:ABCDEF...
-ADMIN_IDS=6596077288  # comma-separated list is supported
-
-# PostgreSQL
-DATABASE_URL=postgresql://aishield:CHANGE_ME@127.0.0.1:5432/aishield
-
-# Vertex AI (Gemini)
-SERVICE_ACCOUNT_PATH=api.json
-GCP_LOCATION=us-central1
-GEMINI_MODEL=gemini-2.0-flash-001
-
-# Challenge
-CHALLENGE_FLAG=FLAG{your_flag_here}
-
-# Panel auth (required even if you only run the bot)
-PANEL_SECRET_KEY=REPLACE_WITH_A_LONG_RANDOM_SECRET
-
-# Local dev defaults
-APP_ENV=development
-BOT_MODE=polling
-PANEL_COOKIE_SECURE=false
-```
-
-Generate a good `PANEL_SECRET_KEY`:
-
-```bash
-openssl rand -hex 32
-```
-
-For a full list of optional knobs, read `.env.example` and `config.py`.
-
-## 7) Run Locally (Polling Mode)
-
-Polling is the simplest for local development:
-
-```bash
-source venv/bin/activate
-python bot.py
-```
-
-The bot auto-creates tables on startup (PostgreSQL schema is managed in `database.py`).
-
-## 8) Run the Admin Panel (Optional)
-
-Create a panel admin user:
-
-```bash
-source venv/bin/activate
-python -m panel.cli create-admin
-```
-
-Run the panel:
-
-```bash
-python -m panel.cli run
-```
-
-Default panel URL:
-- `http://127.0.0.1:8000`
-
-If you serve the panel over HTTPS in production, keep `PANEL_COOKIE_SECURE=true`.
-
-## 9) Production Deployment (Recommended)
-
-### 9.1 Install to `/opt/aishield`
-
-```bash
-sudo useradd -r -m -d /opt/aishield -s /usr/sbin/nologin aishield || true
-sudo mkdir -p /opt/aishield
-sudo chown -R aishield:aishield /opt/aishield
-```
-
-Clone the repo on the server (as the service user):
-
-```bash
-sudo -u aishield git clone <REPO_URL> /opt/aishield
-```
-
-Create venv + install deps:
-
-```bash
-sudo -u aishield bash -lc "cd /opt/aishield && python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt"
-```
-
-Put your `.env` in `/opt/aishield/.env` and your service account JSON at the path referenced by `SERVICE_ACCOUNT_PATH`:
-
-```bash
-sudo -u aishield cp /opt/aishield/.env.example /opt/aishield/.env
-sudo -u aishield nano /opt/aishield/.env
-sudo -u aishield chmod 600 /opt/aishield/.env
-sudo -u aishield chmod 600 /opt/aishield/api.json
-```
-
-If you will run the panel, create the first panel admin once:
-
-```bash
-sudo -u aishield bash -lc "cd /opt/aishield && source venv/bin/activate && python -m panel.cli create-admin"
-```
-
-### 9.2 Use systemd services
-
-This repo includes ready-to-copy unit files in `deploy/`:
-- `deploy/aishield-bot.service` (polling)
-- `deploy/aishield-bot-webhook@.service` (webhook workers)
-- `deploy/aishield-panel.service`
-
-Install them:
-
-```bash
-sudo cp deploy/aishield-bot.service /etc/systemd/system/
-sudo cp deploy/aishield-bot-webhook@.service /etc/systemd/system/
-sudo cp deploy/aishield-panel.service /etc/systemd/system/
-sudo systemctl daemon-reload
-```
-
-Start polling bot:
-
-```bash
-sudo systemctl enable --now aishield-bot.service
-```
-
-Start panel:
-
-```bash
-sudo systemctl enable --now aishield-panel.service
-```
-
-Logs:
-
-```bash
-journalctl -u aishield-bot.service -f
-journalctl -u aishield-panel.service -f
-```
-
-## 10) Webhook Mode (For Real Production Traffic)
-
-Polling is fine for dev, but webhook mode is the right choice for higher traffic and lower latency.
-
-Set in `.env`:
+In addition to the required values above, set:
 
 ```env
 APP_ENV=production
 BOT_MODE=webhook
 WEBHOOK_URL=https://yourdomain.com
-WEBHOOK_PATH=/webhook
-WEBHOOK_HOST=0.0.0.0
-WEBHOOK_PORT=8443
-WEBHOOK_SECRET_TOKEN=PUT_A_RANDOM_16+_CHAR_SECRET_HERE
-WEBHOOK_MAX_CONNECTIONS=40
-WEBHOOK_REUSE_PORT=true
+WEBHOOK_SECRET_TOKEN=a_random_string_at_least_16_chars
+DOMAIN=yourdomain.com
+POSTGRES_PASSWORD=a_strong_password
+PANEL_COOKIE_SECURE=true
 ```
 
-Important:
-- Telegram requires a **public HTTPS** URL in production.
-- You typically run a reverse proxy (Caddy/Nginx) for TLS and forward to `127.0.0.1:8443`.
-
-Start 1..N webhook workers (example: 8):
+### 2. Start the production stack
 
 ```bash
-sudo systemctl enable --now aishield-bot-webhook@{1..8}
+docker compose -f docker-compose.prod.yml up -d --build
 ```
 
-Tip for multi-worker webhook setups:
-- Set `WEBHOOK_REGISTER_ON_START=false` in `.env` so workers do not constantly call Telegram `setWebhook`.
-- Run one worker with registration enabled when you need to (for example, start it manually once with `WEBHOOK_REGISTER_ON_START=true`).
+This runs PostgreSQL, the bot (webhook mode with 4 workers by default), the admin panel, and Caddy for automatic HTTPS.
 
-Health and metrics endpoints (webhook server):
-- `GET /health`
-- `GET /metrics`
+### 3. Create a panel admin
 
-Protect them behind firewall or reverse proxy ACLs in production.
+```bash
+docker compose -f docker-compose.prod.yml exec panel python -m panel.cli create-admin
+```
 
-## 11) Backups / Restore / Reset
+### Scaling
 
-The panel Controls page can:
-- create backups using `pg_dump` (`.dump`)
-- restore from backups using `pg_restore`
-- reset the database (keep admins or wipe all)
+`BOT_WEBHOOK_WORKERS` controls the number of bot processes inside the container. On a 4-vCPU machine, 4-8 workers is a reasonable starting point. Workers share the webhook port via SO_REUSEPORT.
 
-Requirements:
-- `pg_dump` and `pg_restore` installed on the host (`postgresql-client`)
-- enable Maintenance Mode before destructive actions
+### Deploy script
 
-Backups are stored under `PANEL_BACKUP_DIR` (default: `./backups`).
+A `deploy.sh` script is included for rsync-based deployments:
 
-## 12) Customization
+```bash
+./deploy.sh user@yourserver /opt/flagguard
+```
 
-You can rebrand the bot and flag format without touching source code by setting two environment variables in `.env`:
+It syncs files (excluding secrets), rebuilds containers, and waits for health checks to pass.
+
+### Health endpoints
+
+- `GET /health` -- returns 200 if the database is reachable.
+- `GET /metrics` -- Prometheus-compatible metrics.
+
+Both are served by the webhook server and the panel. Restrict access in production.
+
+---
+
+## Configuration Reference
+
+All configuration is done through environment variables in `.env`. See `.env.example` for the full list with descriptions.
+
+### Required
+
+| Variable | Description |
+|---|---|
+| `TELEGRAM_TOKEN` | Bot token from BotFather. |
+| `ADMIN_IDS` | Comma-separated Telegram user IDs for admin access. |
+| `CHALLENGE_FLAG` | The flag string (e.g. `FLAG{secret}`). Auto-seeded as CTF flag #1. |
+| `SERVICE_ACCOUNT_PATH` | Path to GCP service account JSON. Default: `api.json`. |
+| `DATABASE_URL` | PostgreSQL connection string. |
+| `PANEL_SECRET_KEY` | Secret for session signing. Generate with `openssl rand -hex 32`. |
+
+### Branding
 
 | Variable | Default | Description |
 |---|---|---|
-| `BOT_NAME` | `AIShield` | Display name used in bot responses, panel title, and system messages. |
-| `FLAG_PREFIX` | `FLAG` | Prefix for the challenge flag format, e.g. `FLAG{...}`. Change this to use your own CTF branding. |
+| `BOT_NAME` | `AIShield` | Display name in bot responses and the panel. |
+| `FLAG_PREFIX` | `FLAG` | Prefix for flag format (e.g. `FLAG{...}`). |
 
-Example:
+Both can be overridden at runtime from the panel Controls page.
 
-```env
-BOT_NAME=MyCTFBot
-FLAG_PREFIX=CTF
-CHALLENGE_FLAG=CTF{my_secret_flag}
+### AI Tuning
+
+| Variable | Default | Description |
+|---|---|---|
+| `GEMINI_MODEL` | `gemini-3.0-flash` | Vertex AI model ID. |
+| `GCP_LOCATION` | `us-central1` | Vertex AI region. |
+| `AI_API_TIMEOUT_SECONDS` | `15` | Per-request timeout. |
+| `AI_RETRY_ATTEMPTS` | `2` | Retries on transient errors. |
+| `AI_CIRCUIT_BREAKER_THRESHOLD` | `10` | Consecutive failures before circuit opens. |
+| `AI_GLOBAL_RPM_LIMIT` | `800` | Shared request budget across all workers. 0 disables. |
+| `AI_MAX_CONCURRENT_REQUESTS` | `50`/`8` | Per-worker concurrency (dev/prod defaults differ). |
+
+### Webhook
+
+| Variable | Default | Description |
+|---|---|---|
+| `BOT_MODE` | `polling` | Set to `webhook` for production. |
+| `WEBHOOK_URL` | -- | Public HTTPS URL (required in webhook mode). |
+| `WEBHOOK_SECRET_TOKEN` | -- | Required in production, at least 16 characters. |
+| `WEBHOOK_PORT` | `8443` | Internal port the webhook server listens on. |
+| `BOT_WEBHOOK_WORKERS` | `4` | Number of bot processes per container. |
+
+### Panel
+
+| Variable | Default | Description |
+|---|---|---|
+| `PANEL_PORT` | `8000` | Panel HTTP port. |
+| `PANEL_COOKIE_SECURE` | `true` | Set to `false` for local development without HTTPS. |
+| `PANEL_BACKUP_RETENTION` | `20` | Number of backup files to keep. |
+
+---
+
+## Manual Setup (No Docker)
+
+### System packages (Ubuntu 24.04)
+
+```bash
+sudo apt update
+sudo apt install -y python3-venv python3-pip postgresql postgresql-contrib postgresql-client
+sudo systemctl enable --now postgresql
 ```
 
-These values can also be changed at runtime through the admin panel Controls page (Bot Name and Flag Prefix fields). Panel overrides take priority over environment variables until the panel values are cleared.
+### Database
 
-## 13) Common Notes
+```bash
+sudo -u postgres psql -c "CREATE USER flagguard WITH PASSWORD 'CHANGE_ME';"
+sudo -u postgres psql -c "CREATE DATABASE flagguard OWNER flagguard;"
+```
 
-- Some Telegram users do not have a username. In that case the panel shows `-` (expected).
-- `.env.example` is the source of truth for all optional tuning knobs.
-- If the bot prints “AI Model initialization failed”, your Vertex credentials/model/location are wrong or the service account lacks permissions.
+### Application
+
+```bash
+git clone https://github.com/ts-solidarity/flagguard.git
+cd flagguard
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
+# Edit .env with your configuration
+```
+
+### Run
+
+```bash
+# Bot (polling mode)
+python bot.py
+
+# Panel (separate terminal)
+python -m panel.cli create-admin
+python -m panel.cli run
+```
+
+### Systemd (optional)
+
+Unit files are provided in `deploy/` for running the bot and panel as system services.
+
+---
+
+## Architecture
+
+```
+Telegram
+  |
+  v
+[Caddy] --> /webhook --> [Bot Workers x N]
+         --> /*       --> [Panel]
+                              |
+                     [PostgreSQL 16]
+```
+
+**Bot** -- Python 3.12, aiogram (Telegram framework), google-genai (Vertex AI client). Runs in polling or webhook mode. Multi-worker support via SO_REUSEPORT.
+
+**Panel** -- FastAPI + Jinja2 templates. Serves the admin interface and health/metrics endpoints.
+
+**Database** -- PostgreSQL 16. All tables are auto-created on first startup. Schema is managed in `database.py`.
+
+**Caddy** -- Reverse proxy with automatic HTTPS (Let's Encrypt). Routes `/webhook` to the bot and everything else to the panel. Only used in production Docker deployment.
+
+### Key directories
+
+```
+ai/            AI engine, difficulty profiles, personality definitions
+handlers/      Telegram command and message handlers
+security/      Jailbreak detection, honeypot, sanitizer, behavior analysis
+models/        Database repositories (user, conversation, competition, flags, etc.)
+panel/         Web admin panel (routes, templates, CLI)
+docker/        Entrypoint script and Caddyfile
+deploy/        Systemd unit files
+```
+
+---
+
+## License
+
+MIT
