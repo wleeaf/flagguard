@@ -97,14 +97,9 @@ async def _check_multi_flag(
         response_text = success_msg
         await send_message(chat_id, success_msg, parse_mode="HTML")
     else:
-        # Default message: use sanitizer success message for pos 1, generic for others.
-        if flag_pos == 1:
-            response_text = engine.sanitizer.flag_success_message()
-            await send_message(chat_id, response_text, parse_mode="HTML")
-        else:
-            total = await run_blocking(ctf_flag_repo.get_flag_count)
-            response_text = f"Tebrikler! Flag #{flag_pos} bulundu. ({flag_pos}/{total})"
-            await _send_user_text(chat_id, response_text)
+        total = await run_blocking(ctf_flag_repo.get_flag_count)
+        response_text = f"Tebrikler! Flag #{flag_pos} bulundu. ({flag_pos}/{total})"
+        await _send_user_text(chat_id, response_text)
 
     # Log to conversation_logs so flag attempts appear in the logs page.
     tag = matched.get("tag", "")
@@ -238,6 +233,9 @@ async def handle_message(message: types.Message):
                 pos1_flags = await run_blocking(ctf_flag_repo.get_all_flags)
                 if pos1_flags:
                     _pos1 = pos1_flags[0]
+                    _pos1_msg = _pos1.get("success_message") or ""
+                    if _pos1_msg:
+                        ai_response = _pos1_msg
                     new_find = await run_blocking(ctf_flag_repo.record_flag_found, str(uid), _pos1["id"])
                     if new_find and _pos1.get("notify_on_find"):
                         await announce_flag_found(
@@ -251,6 +249,7 @@ async def handle_message(message: types.Message):
             except Exception:
                 pass
         model_revealed_flag = False
+        _model_reveal_success = ""
         if not is_flag_award and CHALLENGE_FLAG and CHALLENGE_FLAG in ai_response and profile.key != "IMPOSSIBLE":
             # Model-driven reveal path: send AI response normally, then follow up with success.
             model_revealed_flag = True
@@ -268,6 +267,7 @@ async def handle_message(message: types.Message):
                 pos1_flags = await run_blocking(ctf_flag_repo.get_all_flags)
                 if pos1_flags:
                     _pos1 = pos1_flags[0]
+                    _model_reveal_success = _pos1.get("success_message") or ""
                     new_find = await run_blocking(ctf_flag_repo.record_flag_found, str(uid), _pos1["id"])
                     if new_find and _pos1.get("notify_on_find"):
                         await announce_flag_found(
@@ -336,9 +336,12 @@ async def handle_message(message: types.Message):
             await _send_user_text(message.chat.id, ai_response)
 
         if model_revealed_flag:
+            if not _model_reveal_success:
+                total = await run_blocking(ctf_flag_repo.get_flag_count)
+                _model_reveal_success = f"Tebrikler! Flag #1 bulundu. (1/{total})"
             await send_message(
                 message.chat.id,
-                engine.sanitizer.flag_success_message(),
+                _model_reveal_success,
                 parse_mode="HTML",
             )
 

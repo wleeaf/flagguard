@@ -63,7 +63,7 @@ class OutputSanitizer:
                 except Exception:
                     pass
 
-        if len(text) > 600:
+        if len(text) > 2000:
             return "💬 Çok uzun konuşuyorum galiba. Kısacası: hayır. 🙃"
 
         return text
@@ -75,7 +75,7 @@ class OutputSanitizer:
         return None
 
     def flag_success_message(self) -> str:
-        """Return the flag-solved congratulations message."""
+        """Return a generic flag-solved congratulations message (fallback)."""
         lines = ["Tebrikler, doğru flag'i buldun."]
         if config.FLAG_SUCCESS_URL:
             lines.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")

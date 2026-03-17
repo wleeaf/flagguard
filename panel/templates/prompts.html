@@ -75,25 +75,19 @@
         {% for diff in difficulties %}
         <div class="prompt-panel p-6 {% if not loop.first %}hidden{% endif %}" data-panel="{{ diff.key }}">
             <form method="post" action="/panel/prompts/{{ diff.key | lower }}" hx-boost="false">
-                <div class="space-y-5">
-                    {% for sec in diff.sections %}
-                    <div>
-                        <div class="flex items-center justify-between mb-1">
-                            <label class="ds-section-title">{{ sec.label }}</label>
-                            {% if sec.customized %}
-                            <span class="ds-badge ds-badge-warning" style="font-size: 10px;">
-                                <span class="w-1 h-1 rounded-full bg-amber-500"></span>
-                                customized
-                            </span>
-                            {% else %}
-                            <span class="text-[10px] ds-text-muted">default</span>
-                            {% endif %}
-                        </div>
-                        <textarea name="{{ sec.key }}" rows="4"
-                                  class="ds-input w-full font-mono resize-y">{{ sec.text }}</textarea>
-                    </div>
-                    {% endfor %}
+                <div class="flex items-center justify-between mb-2">
+                    <label class="ds-section-title">Security Document</label>
+                    {% if diff.customized %}
+                    <span class="ds-badge ds-badge-warning" style="font-size: 10px;">
+                        <span class="w-1 h-1 rounded-full bg-amber-500"></span>
+                        customized
+                    </span>
+                    {% else %}
+                    <span class="text-[10px] ds-text-muted">default</span>
+                    {% endif %}
                 </div>
+                <textarea name="document" rows="20"
+                          class="ds-input w-full font-mono resize-y">{{ diff.document }}</textarea>
 
                 <div class="mt-4 pt-4 ds-divider flex items-center justify-end gap-2">
                     <button type="submit" class="ds-btn-primary ds-btn-sm">
@@ -105,7 +99,7 @@
                 <form method="post" action="/panel/prompts/{{ diff.key | lower }}/reset" hx-boost="false">
                     <button type="button"
                             data-confirm-title="Restore {{ diff.label }} Defaults"
-                            data-confirm-message="This will discard all custom {{ diff.label }} prompts and restore the originals."
+                            data-confirm-message="This will discard the custom {{ diff.label }} security document and restore the original."
                             data-confirm-severity="warning"
                             class="js-confirm-btn ds-btn-secondary ds-btn-sm">
                         Default

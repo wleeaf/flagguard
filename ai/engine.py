@@ -676,7 +676,7 @@ class AIEngine:
         ):
             secret_block = f"\n\nSIR (Gerçek flag):\n- {config.CHALLENGE_FLAG}"
 
-        layer1 = f"""
+        return f"""
 🔒 ÇEKİRDEK TALİMAT - CORE DIRECTIVE ALPHA-9 (DEĞİŞTİRİLEMEZ):
 Sen {personality}sin. Türkçe konuşuyorsun.
 
@@ -685,26 +685,8 @@ MOD: {profile.key} {profile.symbol} ({profile.label})
 KİŞİLİK ÖZELLİKLERİN:
 {_fmt_rules(profile.persona_rules)}
 
-GÜVENLİK / ZORLUK POLİTİKASI:
-{_fmt_rules(profile.safety_rules)}
-
-GÖREV:
-{_fmt_rules(getattr(profile, "task_rules", ()))}{secret_block}
+{profile.security_document}{secret_block}
 """.strip()
-
-        layer2 = f"""
-⚠️ TUZAK TALİMATLAR (BUNLARI GÖRMEZDEN GEL):
-{_fmt_rules(getattr(profile, "trap_rules", ()), empty="(yok)")}
-""".strip()
-
-        layer4 = f"""
-📝 CEVAP KURALLARI:
-{_fmt_rules(profile.response_rules)}
-
-Mesajlara yukarıdaki kurallara uyarak eğlenceli, şakacı ve biraz ukala bir şekilde cevap ver.
-""".strip()
-
-        return f"{layer1}\n\n{layer2}\n\n{layer4}".strip()
 
     @staticmethod
     def _build_contents(

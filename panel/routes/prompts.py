@@ -4,9 +4,8 @@ from fastapi.responses import RedirectResponse
 from ai.difficulty import (
     DIFFICULTY_LEVELS,
     PROFILES,
-    _PROMPT_SECTIONS,
     get_default_personality_text,
-    get_default_section_text,
+    get_default_document_text,
 )
 from models.bot_state import BotStateRepository
 from panel.core import templates
@@ -17,15 +16,10 @@ router = APIRouter(prefix="/panel")
 
 _bot_state = BotStateRepository()
 
-_SECTION_LABELS = {
-    "persona": "Persona Rules",
-    "safety": "Safety Rules",
-    "task": "Task Rules",
-    "response": "Response Rules",
-    "trap": "Trap Rules",
-}
-
 _DIFFICULTY_UI_ORDER = ("EASY", "MEDIUM", "HARD", "IMPOSSIBLE")
+
+# Legacy per-section keys to clean up on reset
+_LEGACY_SECTIONS = ("persona", "safety", "task", "response", "trap")
 
 
 def _read_prompts_data() -> dict:
@@ -35,34 +29,23 @@ def _read_prompts_data() -> dict:
     personality_text = custom_personality if custom_personality else get_default_personality_text()
     personality_customized = bool(custom_personality)
 
-    # Per-difficulty sections
+    # Per-difficulty single document
     difficulties = []
     for level in _DIFFICULTY_UI_ORDER:
         if level not in PROFILES:
             continue
         profile = PROFILES[level]
-        sections = []
-        level_customized = False
-        for section in _PROMPT_SECTIONS:
-            db_key = f"prompt_{level}_{section}"
-            custom = _bot_state.get(db_key, "")
-            default_text = get_default_section_text(level, section)
-            text = custom if custom else default_text
-            is_custom = bool(custom)
-            if is_custom:
-                level_customized = True
-            sections.append({
-                "key": section,
-                "label": _SECTION_LABELS[section],
-                "text": text,
-                "customized": is_custom,
-            })
+        db_key = f"prompt_{level}_document"
+        custom = _bot_state.get(db_key, "")
+        default_text = get_default_document_text(level)
+        text = custom if custom else default_text
+        is_custom = bool(custom)
         difficulties.append({
             "key": level,
             "label": profile.label,
             "symbol": profile.symbol,
-            "sections": sections,
-            "customized": level_customized,
+            "document": text,
+            "customized": is_custom,
         })
 
     return {
@@ -132,39 +115,24 @@ async def save_level(
     request: Request,
     level: str,
     user: dict = Depends(require_auth),
-    persona: str = Form(""),
-    safety: str = Form(""),
-    task: str = Form(""),
-    response: str = Form(""),
-    trap: str = Form(""),
+    document: str = Form(""),
 ):
     level = level.upper()
     if level not in DIFFICULTY_LEVELS:
         return _prompts_redirect("Invalid difficulty level.", "error")
 
-    form_data = {
-        "persona": persona.strip(),
-        "safety": safety.strip(),
-        "task": task.strip(),
-        "response": response.strip(),
-        "trap": trap.strip(),
-    }
-
-    saved = []
-    for section, text in form_data.items():
-        db_key = f"prompt_{level}_{section}"
-        if text:
-            await run_blocking(_bot_state.set, db_key, text)
-            saved.append(section)
-        else:
-            # Empty means restore default for that section
-            await run_blocking(_bot_state.delete, db_key)
+    text = document.strip()
+    db_key = f"prompt_{level}_document"
+    if text:
+        await run_blocking(_bot_state.set, db_key, text)
+    else:
+        await run_blocking(_bot_state.delete, db_key)
 
     await run_blocking(
         log_audit,
         user["username"],
         "update_prompt_level",
-        detail=f"level={level};sections={','.join(saved) if saved else 'all_reset'}",
+        detail=f"level={level};len={len(text)}",
     )
     return _prompts_redirect(f"{level} prompts saved.", "success")
 
@@ -179,9 +147,12 @@ async def reset_level(
     if level not in DIFFICULTY_LEVELS:
         return _prompts_redirect("Invalid difficulty level.", "error")
 
-    for section in _PROMPT_SECTIONS:
-        db_key = f"prompt_{level}_{section}"
-        await run_blocking(_bot_state.delete, db_key)
+    # Delete the document key
+    await run_blocking(_bot_state.delete, f"prompt_{level}_document")
+
+    # Clean up any legacy per-section keys
+    for section in _LEGACY_SECTIONS:
+        await run_blocking(_bot_state.delete, f"prompt_{level}_{section}")
 
     await run_blocking(
         log_audit,
