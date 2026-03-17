@@ -353,11 +353,21 @@
                 Helps fix missing usernames/last_seen by rebuilding <span class="font-mono">known_users</span>
                 from <span class="font-mono">message_log</span> and <span class="font-mono">conversation_logs</span>.
             </p>
-            <form method="post" action="/panel/controls/db/backfill-known-users" hx-boost="false">
-                <button type="submit" class="ds-btn-secondary">
-                    Backfill Known Users
-                </button>
-            </form>
+            <div class="flex flex-col sm:flex-row gap-2">
+                <form method="post" action="/panel/controls/db/clear-ai-context" hx-boost="false">
+                    <button type="button"
+                            data-confirm-title="Clear AI Context"
+                            data-confirm-message="This will delete the AI conversation history for all users. Their next message will start with a fresh context. Conversation logs are NOT affected."
+                            class="js-confirm-btn ds-btn-secondary">
+                        Clear All AI Context
+                    </button>
+                </form>
+                <form method="post" action="/panel/controls/db/backfill-known-users" hx-boost="false">
+                    <button type="submit" class="ds-btn-secondary">
+                        Backfill Known Users
+                    </button>
+                </form>
+            </div>
         </div>
 
         <!-- Danger zone -->

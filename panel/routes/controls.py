@@ -514,6 +514,21 @@ def _clean_flash_text(value: str, *, limit: int = 300) -> str:
     return text
 
 
+@router.post("/controls/db/clear-ai-context")
+async def clear_all_ai_context(
+    request: Request,
+    user: dict = Depends(require_auth),
+):
+    from models.conversation import ConversationRepository
+    conv_repo = ConversationRepository()
+    deleted = await run_blocking(conv_repo.clear_all_history)
+    await run_blocking(
+        log_audit, user["username"], "clear_all_ai_context",
+        detail=f"deleted={deleted}",
+    )
+    return _backup_redirect(f"AI context cleared for all users ({deleted} rows deleted).", "success")
+
+
 @router.post("/controls/db/backfill-known-users")
 async def backfill_known_users(
     request: Request,

@@ -96,3 +96,9 @@ class ConversationRepository:
             conn.execute(
                 "DELETE FROM conversation_history WHERE user_id = ?", (user_id,)
             )
+
+    def clear_all_history(self) -> int:
+        """Delete all AI context history for every user. Returns rows deleted."""
+        with get_db() as conn:
+            cur = conn.execute("DELETE FROM conversation_history")
+            return cur.rowcount or 0
