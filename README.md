@@ -116,7 +116,7 @@ Separate from the flag challenges. Admins post a question and an answer. Players
 ### 1. Clone and configure
 
 ```bash
-git clone https://github.com/ts-solidarity/flagguard.git
+git clone https://github.com/wleeaf/flagguard.git
 cd flagguard
 cp .env.example .env
 ```
@@ -293,7 +293,7 @@ sudo -u postgres psql -c "CREATE DATABASE flagguard OWNER flagguard;"
 ### Application
 
 ```bash
-git clone https://github.com/ts-solidarity/flagguard.git
+git clone https://github.com/wleeaf/flagguard.git
 cd flagguard
 python3 -m venv venv
 source venv/bin/activate
